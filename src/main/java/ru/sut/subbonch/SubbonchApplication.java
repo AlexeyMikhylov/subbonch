@@ -1,0 +1,13 @@
+package ru.sut.subbonch;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SubbonchApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SubbonchApplication.class, args);
+	}
+
+}
