@@ -1,3 +1,10 @@
+# Фронтенд
+    html страницы -> src/main/resources/templates/
+    css -> src/main/resources/static/css/
+    js -> src/main/resources/static/js/
+    images -> src/main/resources/static/images/
+
+
 # Словарь моделей
 
     *(в базе данных используется snake_case (например, first_name), а в Java-классах и HTML-шаблонах Thymeleaf строго используется camelCase (firstName).*
