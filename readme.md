@@ -94,7 +94,8 @@
     POST /clubs/{id}/members/{userId}/moderator/remove	redirect:/clubs/{id}/members	Снять модератора (MODERATOR -> MEMBER).
     GET /clubs/{id}/edit	                club-edit.html	            Форма редактирования клуба. Только `ADMIN` клуба или `isAppAdmin`.
     POST /clubs/{id}/edit	                redirect:/clubs/{id}	    Сохранить клуб. Поля: `club`, `about`, `pictureUrl`. Ошибка валидации — возврат `club-edit.html` с `errorMessage`.
-    POST /clubs/{id}/posts/create	        redirect:/clubs/{id}	    Создание поста (для админа/модера). Поля: title, body, imageUrl (опционально).
+    POST /clubs/{id}/posts/create	        redirect:/clubs/{id}	    Создание поста (только `MODERATOR/ADMIN` клуба). Поля: `title`, `body`, `imageUrl` (опционально).
+    POST /clubs/{id}/posts/{postId}/delete	redirect:/clubs/{id}	    Мягкое удаление поста (только `MODERATOR/ADMIN` клуба).
     POST /posts/{id}/comments	            redirect:/clubs/{clubId}	Добавление комментария. Поля: comment, parentId (скрытое поле для ответа).
     POST /polls/{pollId}/vote	            redirect:/feed	            Голосование в опросе. Поле: voteId.
     

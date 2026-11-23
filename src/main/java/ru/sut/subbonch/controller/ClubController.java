@@ -11,6 +11,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.server.ResponseStatusException;
 import ru.sut.subbonch.service.ClubMembershipService;
 import ru.sut.subbonch.service.ClubService;
+import ru.sut.subbonch.service.PostService;
 
 @Controller
 @RequestMapping("/clubs")
@@ -18,10 +19,14 @@ public class ClubController {
 
     private final ClubService clubService;
     private final ClubMembershipService clubMembershipService;
+    private final PostService postService;
 
-    public ClubController(ClubService clubService, ClubMembershipService clubMembershipService) {
+    public ClubController(ClubService clubService,
+                          ClubMembershipService clubMembershipService,
+                          PostService postService) {
         this.clubService = clubService;
         this.clubMembershipService = clubMembershipService;
+        this.postService = postService;
     }
 
     @GetMapping
@@ -39,6 +44,7 @@ public class ClubController {
     public String clubPage(@PathVariable Integer id, Model model, RedirectAttributes redirectAttributes) {
         try {
             model.addAttribute("clubPage", clubService.getClubPage(id));
+            model.addAttribute("postsList", postService.getClubPosts(id));
             model.addAttribute("active", "catalog");
             return "club";
         } catch (ResponseStatusException ex) {
