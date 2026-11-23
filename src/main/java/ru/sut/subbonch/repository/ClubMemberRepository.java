@@ -32,6 +32,10 @@ public interface ClubMemberRepository extends JpaRepository<ClubMember, Integer>
     @EntityGraph(attributePaths = "user")
     List<ClubMember> findByClubAndUserRoleIn(Club club, Collection<ClubRole> roles);
 
+    /** Роли указанных пользователей в клубе, батчем для бейджей комментариев. */
+    @EntityGraph(attributePaths = "user")
+    List<ClubMember> findByClubClubIdAndUserUserIdIn(Integer clubId, Collection<Integer> userIds);
+
     long countByClub(Club club);
 
     long countByUser(User user);

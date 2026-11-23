@@ -20,6 +20,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import ru.sut.subbonch.dto.CommentResponse;
 import ru.sut.subbonch.dto.PollOptionResponse;
 import ru.sut.subbonch.dto.PollResponse;
 import ru.sut.subbonch.dto.PostCreateRequest;
@@ -59,6 +60,7 @@ public class PostService {
     private final PollRepository pollRepository;
     private final VoteRepository voteRepository;
     private final BallotRepository ballotRepository;
+    private final CommentService commentService;
 
     public PostService(PostRepository postRepository,
                        AttachmentPostRepository attachmentPostRepository,
@@ -67,7 +69,8 @@ public class PostService {
                        UserRepository userRepository,
                        PollRepository pollRepository,
                        VoteRepository voteRepository,
-                       BallotRepository ballotRepository) {
+                       BallotRepository ballotRepository,
+                       CommentService commentService) {
         this.postRepository = postRepository;
         this.attachmentPostRepository = attachmentPostRepository;
         this.clubRepository = clubRepository;
@@ -76,6 +79,7 @@ public class PostService {
         this.pollRepository = pollRepository;
         this.voteRepository = voteRepository;
         this.ballotRepository = ballotRepository;
+        this.commentService = commentService;
     }
 
     @Transactional
@@ -154,6 +158,8 @@ public class PostService {
                         AttachmentPost::getAttachUrl,
                         (existing, ignored) -> existing));
         Map<Integer, PollResponse> pollByPostId = loadPollsByPostIds(postIds);
+        Map<Integer, List<CommentResponse>> commentsByPostId =
+                commentService.getCommentTreesByPostIds(postIds, clubId);
         return posts.stream()
                 .map(post -> new PostListItemResponse(
                         post.getPostId(),
@@ -165,7 +171,8 @@ public class PostService {
                         post.getUser().getFirstName(),
                         post.getUser().getLastName(),
                         imageUrlByPostId.get(post.getPostId()),
-                        pollByPostId.get(post.getPostId())))
+                        pollByPostId.get(post.getPostId()),
+                        commentsByPostId.getOrDefault(post.getPostId(), List.of())))
                 .toList();
     }
 

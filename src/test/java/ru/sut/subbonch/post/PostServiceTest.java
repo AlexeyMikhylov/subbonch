@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
+import ru.sut.subbonch.dto.CommentResponse;
 import ru.sut.subbonch.dto.PostCreateRequest;
 import ru.sut.subbonch.dto.PostListItemResponse;
 import ru.sut.subbonch.entity.AttachmentPost;
@@ -41,6 +43,7 @@ import ru.sut.subbonch.repository.PollRepository;
 import ru.sut.subbonch.repository.PostRepository;
 import ru.sut.subbonch.repository.UserRepository;
 import ru.sut.subbonch.repository.VoteRepository;
+import ru.sut.subbonch.service.CommentService;
 import ru.sut.subbonch.service.PostService;
 
 @ExtendWith(MockitoExtension.class)
@@ -69,6 +72,9 @@ class PostServiceTest {
 
     @Mock
     private BallotRepository ballotRepository;
+
+    @Mock
+    private CommentService commentService;
 
     @InjectMocks
     private PostService postService;
@@ -823,5 +829,38 @@ class PostServiceTest {
         assertThat(result.get(0).poll()).isNotNull();
         assertThat(result.get(0).poll().closed()).isTrue();
         assertThat(result.get(0).poll().alreadyVoted()).isFalse();
+    }
+
+    @Test
+    void getClubPosts_includesCommentTreesFromCommentService() {
+        Club club = activeClub(10);
+        User author = user(1, "author@sut.ru");
+        author.setFirstName("Ivan");
+        author.setLastName("Petrov");
+
+        Post post = post(100, club, author, false);
+        when(postRepository.findActiveByClubIdWithUser(10)).thenReturn(List.of(post));
+        when(attachmentPostRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+        when(pollRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+
+        CommentResponse reply = new CommentResponse(201, 2, "Mod", "User", "MODERATOR",
+                "Reply", LocalDateTime.of(2026, 5, 1, 13, 0), 200, List.of());
+        CommentResponse root = new CommentResponse(200, 1, "Ivan", "Petrov", "ADMIN",
+                "Root", LocalDateTime.of(2026, 5, 1, 12, 0), null, List.of(reply));
+        when(commentService.getCommentTreesByPostIds(List.of(100), 10)).thenReturn(Map.of(100, List.of(root)));
+
+        List<PostListItemResponse> result = postService.getClubPosts(10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).comments()).hasSize(1);
+        CommentResponse actualRoot = result.get(0).comments().get(0);
+        assertThat(actualRoot.commentId()).isEqualTo(200);
+        assertThat(actualRoot.authorRoleInClub()).isEqualTo("ADMIN");
+        assertThat(actualRoot.parentId()).isNull();
+        assertThat(actualRoot.replies()).hasSize(1);
+        assertThat(actualRoot.replies().get(0).parentId()).isEqualTo(200);
+        assertThat(actualRoot.replies().get(0).authorRoleInClub()).isEqualTo("MODERATOR");
+
+        verify(commentService).getCommentTreesByPostIds(List.of(100), 10);
     }
 }

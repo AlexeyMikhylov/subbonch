@@ -1,6 +1,7 @@
 package ru.sut.subbonch.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PostListItemResponse(
         Integer postId,
@@ -12,6 +13,7 @@ public record PostListItemResponse(
         String authorFirstName,
         String authorLastName,
         String imageUrl,
-        PollResponse poll
+        PollResponse poll,
+        List<CommentResponse> comments
 ) {
 }
