@@ -60,14 +60,6 @@ public class GlobalModelAdvice {
         moveFlash(session, LoginFailureHandler.SESSION_BLOCK_REASON, "blockReason", model);
     }
 
-    private static void moveFlash(HttpSession session, String sessionKey, String modelKey, Model model) {
-        Object value = session.getAttribute(sessionKey);
-        if (value != null) {
-            session.removeAttribute(sessionKey);
-            model.addAttribute(modelKey, value);
-        }
-    }
-
     /**
      * Явное имя атрибута обязательно: без него Spring выведет имя из типа
      * ({@code user}) и создаст пустой transient {@code User} вместо текущего.
@@ -82,5 +74,13 @@ public class GlobalModelAdvice {
         return memberships.stream()
                 .map(ClubMember::getClub)
                 .toList();
+    }
+
+    private static void moveFlash(HttpSession session, String sessionKey, String modelKey, Model model) {
+        Object value = session.getAttribute(sessionKey);
+        if (value != null) {
+            session.removeAttribute(sessionKey);
+            model.addAttribute(modelKey, value);
+        }
     }
 }
