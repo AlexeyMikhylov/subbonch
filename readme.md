@@ -73,9 +73,11 @@
     **blockReason** — причина блокировки пользователя при входе (показывается в layout).
     **popularClubs** — топ клубов по количеству участников (для правого блока на главной). # пока не делаем
     **postsList** — список постов для вывода в ленте или на странице клуба.
-    **clubsList** — список всех клубов для страницы каталога.
-    **club** — объект конкретного клуба (на странице клуба).
-    **userRoleInClub** — роль текущего юзера в открытом клубе ('NONE', 'MEMBER', 'MODERATOR', 'ADMIN'), чтобы фронтендер знала, какие кнопки показывать («Вступить» или «Создать пост»).
+    **clubsPage** — страница каталога клубов (`PageResponse<ClubListItemResponse>`: `content`, `page`, `size`, `totalElements`, `totalPages`).
+    **clubPage** — данные страницы клуба (`ClubPageResponse`: клуб, `membersCount`, `userRoleInClub`, `team`).
+    **membersPage** — страница участников клуба (`PageResponse<ClubMemberListItemResponse>`).
+    **clubForm** — форма редактирования клуба (`ClubEditRequest`: `club`, `about`, `pictureUrl`).
+    **userRoleInClub** — роль текущего юзера в клубе ('NONE', 'MEMBER', 'MODERATOR', 'ADMIN'), в шаблоне берётся как `clubPage.userRoleInClub`.
 
 ### Карта url маршрутов
 
@@ -83,11 +85,15 @@
     GET /register	                        register.html	            Страница регистрации.
     POST /register	                        redirect:/login?registered	Обработка регистрации. Поля формы: firstName, lastName, email, password, passwordConfirm.
     GET / или GET /feed	                    feed.html	                Главная страница с лентой. Поддерживает параметр ?tab=subscriptions для вкладки «Подписки».
-    GET /clubs	                            catalog.html	            Каталог всех доступных клубов (поиск через ?q=...).
-    GET /clubs/{id}	                        club.html	                Страница конкретного клуба с его постами, описанием и списком команды.
-    
-    POST /clubs/{id}/join	                redirect:/clubs/{id}	    Вступить в клуб.
-    POST /clubs/{id}/leave	                redirect:/clubs/{id}	    Покинуть клуб.
+    GET /clubs	                            catalog.html	            Каталог клубов. Параметры: `q`, `page`, `size`.
+    GET /clubs/{id}	                        club.html	                Страница клуба: описание, команда, роль пользователя, кнопки вступления/выхода.
+    POST /clubs/{id}/join	                redirect:/clubs/{id}	    Вступить в клуб (только авторизованный). Успех/ошибка через flash `successMessage/errorMessage`.
+    POST /clubs/{id}/leave	                redirect:/clubs/{id}	    Покинуть клуб. `MODERATOR/ADMIN` не могут выйти до передачи прав (flash `errorMessage`).
+    GET /clubs/{id}/members	                club-members.html	        Участники клуба. Только `ADMIN` клуба или `isAppAdmin`. Параметры: `page`, `size`.
+    POST /clubs/{id}/members/{userId}/moderator/assign	redirect:/clubs/{id}/members	Назначить модератора (MEMBER -> MODERATOR).
+    POST /clubs/{id}/members/{userId}/moderator/remove	redirect:/clubs/{id}/members	Снять модератора (MODERATOR -> MEMBER).
+    GET /clubs/{id}/edit	                club-edit.html	            Форма редактирования клуба. Только `ADMIN` клуба или `isAppAdmin`.
+    POST /clubs/{id}/edit	                redirect:/clubs/{id}	    Сохранить клуб. Поля: `club`, `about`, `pictureUrl`. Ошибка валидации — возврат `club-edit.html` с `errorMessage`.
     POST /clubs/{id}/posts/create	        redirect:/clubs/{id}	    Создание поста (для админа/модера). Поля: title, body, imageUrl (опционально).
     POST /posts/{id}/comments	            redirect:/clubs/{clubId}	Добавление комментария. Поля: comment, parentId (скрытое поле для ответа).
     POST /polls/{pollId}/vote	            redirect:/feed	            Голосование в опросе. Поле: voteId.
