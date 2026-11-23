@@ -26,7 +26,7 @@ public class SecurityConfig {
 
     /** Публичные страницы и статика. */
     private static final String[] PUBLIC_PATHS = {
-            "/", "/login", "/register", "/error",
+            "/", "/feed", "/login", "/register", "/error",
             "/css/**", "/js/**", "/images/**", "/favicon.ico"
     };
 

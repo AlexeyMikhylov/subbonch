@@ -145,7 +145,41 @@ public class PostService {
             return List.of();
         }
         List<Post> posts = postRepository.findActiveByClubIdWithUser(clubId);
-        if (posts.isEmpty()) {
+        return mapToPostResponses(posts);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostListItemResponse> getForYouFeed() {
+        return mapToPostResponses(postRepository.findFeedForYou());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostListItemResponse> getSubscriptionsFeed() {
+        User currentUser = getCurrentUserOptional();
+        if (currentUser == null || currentUser.getUserId() == null) {
+            return List.of();
+        }
+        return mapToPostResponses(postRepository.findFeedSubscriptions(currentUser.getUserId()));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Integer, String> getCurrentUserRolesByClubIds(Collection<Integer> clubIds) {
+        User currentUser = getCurrentUserOptional();
+        if (currentUser == null || clubIds == null || clubIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<ClubMember> memberships = clubMemberRepository.findByUser(currentUser);
+        Map<Integer, String> result = new HashMap<>();
+        for (ClubMember m : memberships) {
+            if (m.getClub() != null && m.getClub().getClubId() != null && clubIds.contains(m.getClub().getClubId())) {
+                result.put(m.getClub().getClubId(), m.getUserRole().name());
+            }
+        }
+        return result;
+    }
+
+    private List<PostListItemResponse> mapToPostResponses(List<Post> posts) {
+        if (posts == null || posts.isEmpty()) {
             return List.of();
         }
         List<Integer> postIds = posts.stream()
@@ -158,8 +192,7 @@ public class PostService {
                         AttachmentPost::getAttachUrl,
                         (existing, ignored) -> existing));
         Map<Integer, PollResponse> pollByPostId = loadPollsByPostIds(postIds);
-        Map<Integer, List<CommentResponse>> commentsByPostId =
-                commentService.getCommentTreesByPostIds(postIds, clubId);
+        Map<Integer, List<CommentResponse>> commentsByPostId = loadCommentsByPostId(posts);
         return posts.stream()
                 .map(post -> new PostListItemResponse(
                         post.getPostId(),
@@ -170,10 +203,30 @@ public class PostService {
                         post.getUser().getUserId(),
                         post.getUser().getFirstName(),
                         post.getUser().getLastName(),
+                        post.getClub().getClubId(),
+                        post.getClub().getClub(),
                         imageUrlByPostId.get(post.getPostId()),
                         pollByPostId.get(post.getPostId()),
                         commentsByPostId.getOrDefault(post.getPostId(), List.of())))
                 .toList();
+    }
+
+    private Map<Integer, List<CommentResponse>> loadCommentsByPostId(List<Post> posts) {
+        Map<Integer, List<Integer>> postIdsByClubId = new HashMap<>();
+        for (Post post : posts) {
+            if (post.getPostId() == null || post.getClub() == null || post.getClub().getClubId() == null) {
+                continue;
+            }
+            postIdsByClubId.computeIfAbsent(post.getClub().getClubId(), k -> new ArrayList<>()).add(post.getPostId());
+        }
+        Map<Integer, List<CommentResponse>> result = new HashMap<>();
+        for (Map.Entry<Integer, List<Integer>> entry : postIdsByClubId.entrySet()) {
+            Map<Integer, List<CommentResponse>> byPost = commentService.getCommentTreesByPostIds(entry.getValue(), entry.getKey());
+            if (byPost != null && !byPost.isEmpty()) {
+                result.putAll(byPost);
+            }
+        }
+        return result;
     }
 
     private Map<Integer, PollResponse> loadPollsByPostIds(List<Integer> postIds) {

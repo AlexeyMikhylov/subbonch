@@ -25,8 +25,19 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
 
     long countByClubAndIsDeletedFalse(Club club);
 
-    @Query("select p from Post p join fetch p.user "
+    @Query("select p from Post p join fetch p.user join fetch p.club "
             + "where p.club.clubId = :clubId and p.isDeleted = false "
             + "order by p.createdAt desc")
     List<Post> findActiveByClubIdWithUser(@Param("clubId") Integer clubId);
+
+    @Query("select p from Post p join fetch p.user join fetch p.club c "
+            + "where p.isDeleted = false and c.isActive = true and c.isBlocked = false "
+            + "order by p.createdAt desc")
+    List<Post> findFeedForYou();
+
+    @Query("select p from Post p join fetch p.user join fetch p.club c "
+            + "where p.isDeleted = false and c.isActive = true and c.isBlocked = false "
+            + "and exists (select 1 from ClubMember m where m.club = c and m.user.userId = :userId) "
+            + "order by p.createdAt desc")
+    List<Post> findFeedSubscriptions(@Param("userId") Integer userId);
 }

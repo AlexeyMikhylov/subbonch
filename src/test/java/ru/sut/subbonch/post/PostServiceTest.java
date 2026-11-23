@@ -863,4 +863,84 @@ class PostServiceTest {
 
         verify(commentService).getCommentTreesByPostIds(List.of(100), 10);
     }
+
+    @Test
+    void getForYouFeed_returnsMappedPosts() {
+        Club club = activeClub(10);
+        User author = user(1, "author@sut.ru");
+        author.setFirstName("Ivan");
+        author.setLastName("Petrov");
+        Post post = post(100, club, author, false);
+        when(postRepository.findFeedForYou()).thenReturn(List.of(post));
+        when(attachmentPostRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+        when(pollRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+        when(commentService.getCommentTreesByPostIds(List.of(100), 10)).thenReturn(Map.of());
+
+        List<PostListItemResponse> result = postService.getForYouFeed();
+
+        assertThat(result).hasSize(1);
+        PostListItemResponse item = result.get(0);
+        assertThat(item.postId()).isEqualTo(100);
+        assertThat(item.clubId()).isEqualTo(10);
+        assertThat(item.clubName()).isEqualTo(club.getClub());
+        assertThat(item.authorFirstName()).isEqualTo("Ivan");
+        verify(postRepository).findFeedForYou();
+        verify(commentService).getCommentTreesByPostIds(List.of(100), 10);
+    }
+
+    @Test
+    void getSubscriptionsFeed_guest_returnsEmpty() {
+        List<PostListItemResponse> result = postService.getSubscriptionsFeed();
+
+        assertThat(result).isEmpty();
+        verify(postRepository, never()).findFeedSubscriptions(any());
+    }
+
+    @Test
+    void getSubscriptionsFeed_authenticated_usesUserId() {
+        User viewer = user(2, "viewer@sut.ru");
+        authenticate("viewer@sut.ru");
+        when(userRepository.findByEmail("viewer@sut.ru")).thenReturn(Optional.of(viewer));
+
+        Club club = activeClub(10);
+        User author = user(1, "author@sut.ru");
+        author.setFirstName("Ivan");
+        author.setLastName("Petrov");
+        Post post = post(100, club, author, false);
+        when(postRepository.findFeedSubscriptions(2)).thenReturn(List.of(post));
+        when(attachmentPostRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+        when(pollRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+        when(commentService.getCommentTreesByPostIds(List.of(100), 10)).thenReturn(Map.of());
+
+        List<PostListItemResponse> result = postService.getSubscriptionsFeed();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).clubId()).isEqualTo(10);
+        verify(postRepository).findFeedSubscriptions(2);
+    }
+
+    @Test
+    void getCurrentUserRolesByClubIds_returnsRolesForRequestedClubs() {
+        User viewer = user(2, "viewer@sut.ru");
+        authenticate("viewer@sut.ru");
+        when(userRepository.findByEmail("viewer@sut.ru")).thenReturn(Optional.of(viewer));
+
+        Club club10 = activeClub(10);
+        Club club20 = activeClub(20);
+        ClubMember m1 = new ClubMember();
+        m1.setUser(viewer);
+        m1.setClub(club10);
+        m1.setUserRole(ClubRole.ADMIN);
+        ClubMember m2 = new ClubMember();
+        m2.setUser(viewer);
+        m2.setClub(club20);
+        m2.setUserRole(ClubRole.MEMBER);
+        when(clubMemberRepository.findByUser(viewer)).thenReturn(List.of(m1, m2));
+
+        Map<Integer, String> roles = postService.getCurrentUserRolesByClubIds(List.of(10, 30));
+
+        assertThat(roles).containsEntry(10, "ADMIN");
+        assertThat(roles).doesNotContainKey(20);
+        assertThat(roles).doesNotContainKey(30);
+    }
 }

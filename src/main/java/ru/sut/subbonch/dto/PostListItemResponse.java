@@ -12,6 +12,8 @@ public record PostListItemResponse(
         Integer authorId,
         String authorFirstName,
         String authorLastName,
+        Integer clubId,
+        String clubName,
         String imageUrl,
         PollResponse poll,
         List<CommentResponse> comments
