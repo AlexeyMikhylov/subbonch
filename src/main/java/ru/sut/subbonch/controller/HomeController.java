@@ -21,6 +21,6 @@ public class HomeController {
 
     @GetMapping("/register")
     public String register() {
-        return "redirect:/login";
+        return "register";
     }
 }

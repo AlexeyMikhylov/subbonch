@@ -23,6 +23,8 @@ public interface ClubMemberRepository extends JpaRepository<ClubMember, Integer>
 
     long countByClub(Club club);
 
+    long countByUser(User user);
+
     /** «Мои клубы»: клубы сразу подгружаются, чтобы не ловить lazy вне транзакции. */
     @EntityGraph(attributePaths = "club")
     List<ClubMember> findByUser(User user);
