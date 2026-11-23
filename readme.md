@@ -69,6 +69,8 @@
 
     **currentUser** — объект текущего авторизованного пользователя (передается на все страницы для отображения в шапке и левом меню).
     **myClubs** — список клубов, в которых состоит пользователь (для левого сайдбара «Мои клубы»).
+    **loginError** — ошибка входа (показывается в layout).
+    **blockReason** — причина блокировки пользователя при входе (показывается в layout).
     **popularClubs** — топ клубов по количеству участников (для правого блока на главной). # пока не делаем
     **postsList** — список постов для вывода в ленте или на странице клуба.
     **clubsList** — список всех клубов для страницы каталога.
@@ -79,7 +81,7 @@
 
     GET /login	                            login.html	                Страница входа (Spring Security ожидает поля username и password).
     GET /register	                        register.html	            Страница регистрации.
-    POST /register	                        redirect:/login	            Обработка регистрации. Поля формы: firstName, lastName, email, password.
+    POST /register	                        redirect:/login?registered	Обработка регистрации. Поля формы: firstName, lastName, email, password, passwordConfirm.
     GET / или GET /feed	                    feed.html	                Главная страница с лентой. Поддерживает параметр ?tab=subscriptions для вкладки «Подписки».
     GET /clubs	                            catalog.html	            Каталог всех доступных клубов (поиск через ?q=...).
     GET /clubs/{id}	                        club.html	                Страница конкретного клуба с его постами, описанием и списком команды.
@@ -90,9 +92,10 @@
     POST /posts/{id}/comments	            redirect:/clubs/{clubId}	Добавление комментария. Поля: comment, parentId (скрытое поле для ответа).
     POST /polls/{pollId}/vote	            redirect:/feed	            Голосование в опросе. Поле: voteId.
     
-    GET /profile	                        profile.html	            Профиль текущего пользователя и форма подачи заявки на новый клуб.
+    GET /profile	                        profile.html	            Профиль текущего пользователя.
+    GET /profile/edit	                    profile-edit.html	        Форма редактирования профиля.
+    POST /profile/edit	                    redirect:/profile	        Редактирование профиля. Поля: firstName, lastName, about, profilePictureUrl.
     POST /applications/create	            redirect:/profile	        Отправка заявки на клуб. Поля: clubName, appDescription, reason.
     
     GET /admin	                            admin.html	                Панель глобального админа (список заявок applications со статусом PENDING).
     POST /admin/applications/{id}/approve	redirect:/admin	            Одобрение заявки и автоматическое создание клуба.
-
