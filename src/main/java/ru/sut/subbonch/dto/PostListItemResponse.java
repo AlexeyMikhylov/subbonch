@@ -11,6 +11,7 @@ public record PostListItemResponse(
         Integer authorId,
         String authorFirstName,
         String authorLastName,
-        String imageUrl
+        String imageUrl,
+        PollResponse poll
 ) {
 }

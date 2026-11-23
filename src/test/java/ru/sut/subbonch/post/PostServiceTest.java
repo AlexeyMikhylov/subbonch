@@ -25,16 +25,22 @@ import ru.sut.subbonch.dto.PostCreateRequest;
 import ru.sut.subbonch.dto.PostListItemResponse;
 import ru.sut.subbonch.entity.AttachmentPost;
 import ru.sut.subbonch.entity.AttachmentType;
+import ru.sut.subbonch.entity.Ballot;
 import ru.sut.subbonch.entity.Club;
 import ru.sut.subbonch.entity.ClubMember;
 import ru.sut.subbonch.entity.ClubRole;
+import ru.sut.subbonch.entity.Poll;
 import ru.sut.subbonch.entity.Post;
 import ru.sut.subbonch.entity.User;
+import ru.sut.subbonch.entity.Vote;
 import ru.sut.subbonch.repository.AttachmentPostRepository;
+import ru.sut.subbonch.repository.BallotRepository;
 import ru.sut.subbonch.repository.ClubMemberRepository;
 import ru.sut.subbonch.repository.ClubRepository;
+import ru.sut.subbonch.repository.PollRepository;
 import ru.sut.subbonch.repository.PostRepository;
 import ru.sut.subbonch.repository.UserRepository;
+import ru.sut.subbonch.repository.VoteRepository;
 import ru.sut.subbonch.service.PostService;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,6 +60,15 @@ class PostServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PollRepository pollRepository;
+
+    @Mock
+    private VoteRepository voteRepository;
+
+    @Mock
+    private BallotRepository ballotRepository;
 
     @InjectMocks
     private PostService postService;
@@ -475,5 +490,338 @@ class PostServiceTest {
         assertThat(result).isEmpty();
         verify(postRepository, never()).findActiveByClubIdWithUser(any());
         verify(attachmentPostRepository, never()).findByPostPostIdIn(any());
+    }
+
+    @Test
+    void createPost_withValidPoll_createsPollAndVotes() {
+        User moderator = user(1, "mod@sut.ru");
+        Club club = activeClub(10);
+        authenticate("mod@sut.ru");
+        when(userRepository.findByEmail("mod@sut.ru")).thenReturn(Optional.of(moderator));
+        when(clubRepository.findById(10)).thenReturn(Optional.of(club));
+        when(clubMemberRepository.findByUserAndClub(moderator, club))
+                .thenReturn(Optional.of(member(moderator, club, ClubRole.MODERATOR)));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+            Post post = inv.getArgument(0);
+            post.setPostId(100);
+            return post;
+        });
+        when(pollRepository.save(any(Poll.class))).thenAnswer(inv -> {
+            Poll poll = inv.getArgument(0);
+            poll.setPollId(200);
+            return poll;
+        });
+        when(voteRepository.save(any(Vote.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PostCreateRequest request = request("Title", "Body", null);
+        request.setPollTitle("  Ваш любимый язык?  ");
+        request.setPollMultiple(true);
+        request.setPollClosesAt("2026-12-01T18:30");
+        request.setPollOptions(List.of("  Java  ", "Kotlin", "  Scala "));
+
+        Post created = postService.createPost(10, request);
+
+        assertThat(created.getPostId()).isEqualTo(100);
+
+        ArgumentCaptor<Poll> pollCaptor = ArgumentCaptor.forClass(Poll.class);
+        verify(pollRepository).save(pollCaptor.capture());
+        Poll savedPoll = pollCaptor.getValue();
+        assertThat(savedPoll.getPost().getPostId()).isEqualTo(100);
+        assertThat(savedPoll.getTitle()).isEqualTo("Ваш любимый язык?");
+        assertThat(savedPoll.isMultiple()).isTrue();
+        assertThat(savedPoll.getClosesAt()).isEqualTo(LocalDateTime.of(2026, 12, 1, 18, 30));
+
+        ArgumentCaptor<Vote> voteCaptor = ArgumentCaptor.forClass(Vote.class);
+        verify(voteRepository, org.mockito.Mockito.times(3)).save(voteCaptor.capture());
+        assertThat(voteCaptor.getAllValues())
+                .extracting(Vote::getVote)
+                .containsExactly("Java", "Kotlin", "Scala");
+        assertThat(voteCaptor.getAllValues())
+                .allSatisfy(vote -> {
+                    assertThat(vote.getPoll().getPollId()).isEqualTo(200);
+                    assertThat(vote.getTotal()).isZero();
+                });
+    }
+
+    @Test
+    void createPost_withoutPollFields_doesNotCreatePoll() {
+        User moderator = user(1, "mod@sut.ru");
+        Club club = activeClub(10);
+        authenticate("mod@sut.ru");
+        when(userRepository.findByEmail("mod@sut.ru")).thenReturn(Optional.of(moderator));
+        when(clubRepository.findById(10)).thenReturn(Optional.of(club));
+        when(clubMemberRepository.findByUserAndClub(moderator, club))
+                .thenReturn(Optional.of(member(moderator, club, ClubRole.MODERATOR)));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+            Post post = inv.getArgument(0);
+            post.setPostId(100);
+            return post;
+        });
+
+        PostCreateRequest request = request("Title", "Body", null);
+        request.setPollTitle("   ");
+        request.setPollOptions(List.of(" ", ""));
+
+        postService.createPost(10, request);
+
+        verify(pollRepository, never()).save(any(Poll.class));
+        verify(voteRepository, never()).save(any(Vote.class));
+    }
+
+    @Test
+    void createPost_pollWithLessThanTwoOptions_returnsBadRequest() {
+        User moderator = user(1, "mod@sut.ru");
+        Club club = activeClub(10);
+        authenticate("mod@sut.ru");
+        when(userRepository.findByEmail("mod@sut.ru")).thenReturn(Optional.of(moderator));
+        when(clubRepository.findById(10)).thenReturn(Optional.of(club));
+        when(clubMemberRepository.findByUserAndClub(moderator, club))
+                .thenReturn(Optional.of(member(moderator, club, ClubRole.MODERATOR)));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+            Post post = inv.getArgument(0);
+            post.setPostId(100);
+            return post;
+        });
+
+        PostCreateRequest request = request("Title", "Body", null);
+        request.setPollTitle("Question?");
+        request.setPollOptions(List.of("Only one"));
+
+        assertThatThrownBy(() -> postService.createPost(10, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(rse.getReason()).contains("минимум 2");
+                });
+
+        verify(pollRepository, never()).save(any(Poll.class));
+        verify(voteRepository, never()).save(any(Vote.class));
+    }
+
+    @Test
+    void createPost_pollWithEmptyQuestion_returnsBadRequest() {
+        User moderator = user(1, "mod@sut.ru");
+        Club club = activeClub(10);
+        authenticate("mod@sut.ru");
+        when(userRepository.findByEmail("mod@sut.ru")).thenReturn(Optional.of(moderator));
+        when(clubRepository.findById(10)).thenReturn(Optional.of(club));
+        when(clubMemberRepository.findByUserAndClub(moderator, club))
+                .thenReturn(Optional.of(member(moderator, club, ClubRole.MODERATOR)));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+            Post post = inv.getArgument(0);
+            post.setPostId(100);
+            return post;
+        });
+
+        PostCreateRequest request = request("Title", "Body", null);
+        request.setPollTitle("  ");
+        request.setPollOptions(List.of("A", "B"));
+
+        assertThatThrownBy(() -> postService.createPost(10, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(rse.getReason()).contains("Вопрос опроса");
+                });
+
+        verify(pollRepository, never()).save(any(Poll.class));
+        verify(voteRepository, never()).save(any(Vote.class));
+    }
+
+    @Test
+    void createPost_pollQuestionTooLong_returnsBadRequest() {
+        User moderator = user(1, "mod@sut.ru");
+        Club club = activeClub(10);
+        authenticate("mod@sut.ru");
+        when(userRepository.findByEmail("mod@sut.ru")).thenReturn(Optional.of(moderator));
+        when(clubRepository.findById(10)).thenReturn(Optional.of(club));
+        when(clubMemberRepository.findByUserAndClub(moderator, club))
+                .thenReturn(Optional.of(member(moderator, club, ClubRole.MODERATOR)));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+            Post post = inv.getArgument(0);
+            post.setPostId(100);
+            return post;
+        });
+
+        PostCreateRequest request = request("Title", "Body", null);
+        request.setPollTitle("Q".repeat(256));
+        request.setPollOptions(List.of("A", "B"));
+
+        assertThatThrownBy(() -> postService.createPost(10, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(pollRepository, never()).save(any(Poll.class));
+    }
+
+    @Test
+    void createPost_pollOptionTooLong_returnsBadRequest() {
+        User moderator = user(1, "mod@sut.ru");
+        Club club = activeClub(10);
+        authenticate("mod@sut.ru");
+        when(userRepository.findByEmail("mod@sut.ru")).thenReturn(Optional.of(moderator));
+        when(clubRepository.findById(10)).thenReturn(Optional.of(club));
+        when(clubMemberRepository.findByUserAndClub(moderator, club))
+                .thenReturn(Optional.of(member(moderator, club, ClubRole.MODERATOR)));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+            Post post = inv.getArgument(0);
+            post.setPostId(100);
+            return post;
+        });
+
+        PostCreateRequest request = request("Title", "Body", null);
+        request.setPollTitle("Question?");
+        request.setPollOptions(List.of("A", "B".repeat(256)));
+
+        assertThatThrownBy(() -> postService.createPost(10, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(pollRepository, never()).save(any(Poll.class));
+        verify(voteRepository, never()).save(any(Vote.class));
+    }
+
+    @Test
+    void createPost_pollWithInvalidClosesAt_returnsBadRequest() {
+        User moderator = user(1, "mod@sut.ru");
+        Club club = activeClub(10);
+        authenticate("mod@sut.ru");
+        when(userRepository.findByEmail("mod@sut.ru")).thenReturn(Optional.of(moderator));
+        when(clubRepository.findById(10)).thenReturn(Optional.of(club));
+        when(clubMemberRepository.findByUserAndClub(moderator, club))
+                .thenReturn(Optional.of(member(moderator, club, ClubRole.MODERATOR)));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+            Post post = inv.getArgument(0);
+            post.setPostId(100);
+            return post;
+        });
+
+        PostCreateRequest request = request("Title", "Body", null);
+        request.setPollTitle("Question?");
+        request.setPollOptions(List.of("A", "B"));
+        request.setPollClosesAt("not-a-date");
+
+        assertThatThrownBy(() -> postService.createPost(10, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(rse.getReason()).contains("дата закрытия");
+                });
+
+        verify(pollRepository, never()).save(any(Poll.class));
+        verify(voteRepository, never()).save(any(Vote.class));
+    }
+
+    @Test
+    void getClubPosts_includesPollOptionsAndSelectedByCurrentUser() {
+        Club club = activeClub(10);
+        User author = user(1, "author@sut.ru");
+        author.setFirstName("Ivan");
+        author.setLastName("Petrov");
+        User viewer = user(2, "viewer@sut.ru");
+        authenticate("viewer@sut.ru");
+        when(userRepository.findByEmail("viewer@sut.ru")).thenReturn(Optional.of(viewer));
+
+        Post post = post(100, club, author, false);
+        when(postRepository.findActiveByClubIdWithUser(10)).thenReturn(List.of(post));
+        when(attachmentPostRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+
+        Poll poll = new Poll();
+        poll.setPollId(200);
+        poll.setPost(post);
+        poll.setTitle("Лучший язык?");
+        poll.setMultiple(false);
+        poll.setClosesAt(LocalDateTime.now().plusDays(1));
+        when(pollRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of(poll));
+
+        Vote vote1 = new Vote();
+        vote1.setVoteId(301);
+        vote1.setPoll(poll);
+        vote1.setVote("Java");
+        vote1.setTotal(3);
+        Vote vote2 = new Vote();
+        vote2.setVoteId(302);
+        vote2.setPoll(poll);
+        vote2.setVote("Kotlin");
+        vote2.setTotal(1);
+        when(voteRepository.findByPollPollIdIn(List.of(200))).thenReturn(List.of(vote2, vote1));
+
+        Ballot ballot = new Ballot();
+        ballot.setBallotId(401);
+        ballot.setUser(viewer);
+        ballot.setVote(vote1);
+        when(ballotRepository.findByUserAndPollIds(viewer, List.of(200))).thenReturn(List.of(ballot));
+
+        List<PostListItemResponse> result = postService.getClubPosts(10);
+
+        assertThat(result).hasSize(1);
+        PostListItemResponse item = result.get(0);
+        assertThat(item.poll()).isNotNull();
+        assertThat(item.poll().pollId()).isEqualTo(200);
+        assertThat(item.poll().title()).isEqualTo("Лучший язык?");
+        assertThat(item.poll().isMultiple()).isFalse();
+        assertThat(item.poll().closed()).isFalse();
+        assertThat(item.poll().alreadyVoted()).isTrue();
+        assertThat(item.poll().options()).hasSize(2);
+        assertThat(item.poll().options().get(0).voteId()).isEqualTo(301);
+        assertThat(item.poll().options().get(0).vote()).isEqualTo("Java");
+        assertThat(item.poll().options().get(0).total()).isEqualTo(3);
+        assertThat(item.poll().options().get(0).selectedByCurrentUser()).isTrue();
+        assertThat(item.poll().options().get(1).voteId()).isEqualTo(302);
+        assertThat(item.poll().options().get(1).selectedByCurrentUser()).isFalse();
+
+        verify(pollRepository).findByPostPostIdIn(List.of(100));
+        verify(voteRepository).findByPollPollIdIn(List.of(200));
+        verify(ballotRepository).findByUserAndPollIds(viewer, List.of(200));
+    }
+
+    @Test
+    void getClubPosts_postWithoutPoll_returnsNullPoll() {
+        Club club = activeClub(10);
+        User author = user(1, "author@sut.ru");
+        author.setFirstName("Ivan");
+        author.setLastName("Petrov");
+
+        Post post = post(100, club, author, false);
+        when(postRepository.findActiveByClubIdWithUser(10)).thenReturn(List.of(post));
+        when(attachmentPostRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+        when(pollRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+
+        List<PostListItemResponse> result = postService.getClubPosts(10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).poll()).isNull();
+        verify(voteRepository, never()).findByPollPollIdIn(any());
+        verify(ballotRepository, never()).findByUserAndPollIds(any(), any());
+    }
+
+    @Test
+    void getClubPosts_closedPoll_setsClosedFlag() {
+        Club club = activeClub(10);
+        User author = user(1, "author@sut.ru");
+        author.setFirstName("Ivan");
+        author.setLastName("Petrov");
+
+        Post post = post(100, club, author, false);
+        when(postRepository.findActiveByClubIdWithUser(10)).thenReturn(List.of(post));
+        when(attachmentPostRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
+
+        Poll poll = new Poll();
+        poll.setPollId(200);
+        poll.setPost(post);
+        poll.setTitle("Закрытый опрос");
+        poll.setMultiple(false);
+        poll.setClosesAt(LocalDateTime.now().minusHours(1));
+        when(pollRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of(poll));
+        when(voteRepository.findByPollPollIdIn(List.of(200))).thenReturn(List.of());
+
+        List<PostListItemResponse> result = postService.getClubPosts(10);
+
+        assertThat(result.get(0).poll()).isNotNull();
+        assertThat(result.get(0).poll().closed()).isTrue();
+        assertThat(result.get(0).poll().alreadyVoted()).isFalse();
     }
 }

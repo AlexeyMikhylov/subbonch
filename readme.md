@@ -97,7 +97,7 @@
     POST /clubs/{id}/posts/create	        redirect:/clubs/{id}	    Создание поста (только `MODERATOR/ADMIN` клуба). Поля: `title`, `body`, `imageUrl` (опционально).
     POST /clubs/{id}/posts/{postId}/delete	redirect:/clubs/{id}	    Мягкое удаление поста (только `MODERATOR/ADMIN` клуба).
     POST /posts/{id}/comments	            redirect:/clubs/{clubId}	Добавление комментария. Поля: comment, parentId (скрытое поле для ответа).
-    POST /polls/{pollId}/vote	            redirect:/feed	            Голосование в опросе. Поле: voteId.
+    POST /polls/{pollId}/vote	            redirect:/feed	            Голосование в опросе. Поля: `voteId`, опционально `returnUrl` (безопасный локальный путь; иначе Referer/`/feed`).
     
     GET /profile	                        profile.html	            Профиль текущего пользователя.
     GET /profile/edit	                    profile-edit.html	        Форма редактирования профиля.
