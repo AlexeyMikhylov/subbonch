@@ -2,6 +2,7 @@ package ru.sut.subbonch.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -25,7 +26,7 @@ public class SecurityConfig {
 
     /** Публичные страницы и статика. */
     private static final String[] PUBLIC_PATHS = {
-            "/", "/clubs", "/clubs/**", "/login", "/register", "/error",
+            "/", "/login", "/register", "/error",
             "/css/**", "/js/**", "/images/**", "/favicon.ico"
     };
 
@@ -36,6 +37,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/clubs", "/clubs/*").permitAll()
                         .requestMatchers("/admin/**").hasRole("SITE_ADMIN")
                         .anyRequest().authenticated())
                 .formLogin(form -> form
