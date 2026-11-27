@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Участники клуба — SubBonch</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/icon_light.svg}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <header th:replace="~{fragments/layout :: header}"></header>
+  <aside th:replace="~{fragments/layout :: sidebar('clubs')}"></aside>
+  <main class="content-area">
+    <div class="feed-container" th:with="cId=${clubId != null ? clubId : club.clubId}">
+      <a th:href="@{/clubs/{id}(id=${cId})}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+        <span>Назад к клубу</span>
+      </a>
+      <div class="alert-banner success" th:if="${successMessage != null}" th:text="${successMessage}"></div>
+      <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
+      <section class="members-card">
+        <div class="members-card-header">
+          <div>
+            <h1 class="members-card-title">
+              Участники клуба <span th:text="${membersPage.totalElements}">0</span>
+            </h1>
+            <p class="members-card-subtitle">
+              <span th:if="${club != null}" th:text="${club.club + ' · '}">Клуб · </span>управление ролями участников
+            </p>
+          </div>
+        </div>
+        <ul class="members-list" th:if="${membersPage.content != null and !membersPage.content.isEmpty()}">
+          <li class="member-row" th:each="member : ${membersPage.content}">
+            <div class="member-info">
+              <div class="club-avatar-placeholder" th:text="${#strings.toUpperCase(#strings.substring(member.firstName, 0, 1))}">А</div>
+              <div th:unless="${member.profilePictureUrl != null and !member.profilePictureUrl.isEmpty()}"
+                   class="club-avatar-placeholder"
+                   th:text="${#strings.toUpperCase(#strings.substring(member.firstName, 0, 1))}">А</div>
+              <div class="member-details">
+                <div class="member-name-row">
+                  <span class="member-name" th:text="${member.firstName + ' ' + member.lastName}">Имя Фамилия</span>
+                  <span class="role-badge admin" th:if="${member.userRole.name() == 'ADMIN'}">админ</span>
+                  <span class="role-badge moder" th:if="${member.userRole.name() == 'MODERATOR'}">модер</span>
+                </div>
+                <span class="member-email" th:text="${member.email}">email@sut.ru</span>
+              </div>
+            </div>
+            <div class="member-actions">
+              <span class="member-role-note" th:if="${member.userRole.name() == 'ADMIN'}">Администратор клуба</span>
+              <form th:if="${member.userRole.name() == 'MODERATOR'}"
+                    th:action="@{/clubs/{clubId}/members/{userId}/moderator/remove(clubId=${cId}, userId=${member.userId})}"
+                    method="POST"
+                    style="margin: 0;"
+                    onsubmit="return confirm('Снять права модератора с этого пользователя?')">
+                <button type="submit" class="btn-role-remove">Снять модератора</button>
+              </form>
+              <form th:if="${member.userRole.name() == 'MEMBER'}"
+                    th:action="@{/clubs/{clubId}/members/{userId}/moderator/assign(clubId=${cId}, userId=${member.userId})}"
+                    method="POST"
+                    style="margin: 0;"
+                    onsubmit="return confirm('Назначить этого пользователя модератором?')">
+                <button type="submit" class="btn-role-assign">Назначить модератором</button>
+              </form>
+            </div>
+          </li>
+        </ul>
+        <div class="pagination" th:if="${membersPage.totalPages > 1}">
+          <a th:href="@{/clubs/{id}/members(id=${cId}, page=${membersPage.page - 1}, size=${membersPage.size})}"
+             class="page-btn"
+             th:classappend="${membersPage.page == 0} ? 'disabled'">← Назад</a>
+          <div class="page-numbers">
+            <a th:each="p : ${#numbers.sequence(0, membersPage.totalPages - 1)}"
+               th:href="@{/clubs/{id}/members(id=${cId}, page=${p}, size=${membersPage.size})}"
+               class="page-num"
+               th:classappend="${p == membersPage.page} ? 'active'"
+               th:text="${p + 1}">1</a>
+          </div>
+          <a th:href="@{/clubs/{id}/members(id=${cId}, page=${membersPage.page + 1}, size=${membersPage.size})}"
+             class="page-btn"
+             th:classappend="${membersPage.page + 1 >= membersPage.totalPages} ? 'disabled'">Вперёд →</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <div th:replace="~{fragments/layout :: createClubModal}"></div>
+  <script th:src="@{/js/main.js}"></script>
+</body>
+</html>

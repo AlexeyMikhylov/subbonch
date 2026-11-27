@@ -146,6 +146,7 @@ public class CommentService {
                     c.getUser().getUserId(),
                     c.getUser().getFirstName(),
                     c.getUser().getLastName(),
+                    c.getUser().getProfilePictureUrl(),
                     roleByUserId.get(c.getUser().getUserId()),
                     c.getComment(),
                     c.getCreatedAt(),

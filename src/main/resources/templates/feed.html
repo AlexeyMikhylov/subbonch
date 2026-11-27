@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Лента — SubBonch</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/icon_light.svg}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <header th:replace="~{fragments/layout :: header}"></header>
+  <aside th:replace="~{fragments/layout :: sidebar('feed')}"></aside>
+  <main class="content-area">
+    <div class="feed-container">
+      <div class="alert-banner success" th:if="${successMessage != null}" th:text="${successMessage}"></div>
+      <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
+      <div class="feed-tabs">
+        <a th:href="@{/feed}" class="feed-tab" th:classappend="${param.tab == null} ? 'active'">Все</a>
+        <a th:href="@{/feed(tab='subscriptions')}" class="feed-tab" th:classappend="${param.tab != null and param.tab[0] == 'subscriptions'} ? 'active'">Подписки</a>
+      </div>
+
+
+      <div class="empty-state-card" th:if="${postsList == null or postsList.isEmpty()}">
+        <h3>Пока нет постов</h3>
+        <p>Подпишитесь на интересные сообщества в каталоге, чтобы следить за новостями Бонча.</p>
+        <a th:href="@{/clubs}" class="btn-submit-modal btn-link-reset">Перейти в каталог</a>
+      </div>
+
+      <article class="post-card"
+               th:each="post : ${postsList}"
+               th:attr="onclick=|openPost(event, '/posts/${post.postId}')|">
+        <div class="post-header">
+          <div class="post-author">
+            <img th:if="${post.clubPictureUrl != null and !post.clubPictureUrl.isEmpty()}"
+              th:src="${post.clubPictureUrl}"
+              th:alt="${post.clubName}"
+              class="club-avatar-placeholder"
+              style="object-fit: cover;">
+            <div th:unless="${post.clubPictureUrl != null and !post.clubPictureUrl.isEmpty()}"
+              class="club-avatar-placeholder"
+              th:text="${post.clubName != null and !post.clubName.isEmpty() ? #strings.toUpperCase(#strings.substring(post.clubName, 0, 1)) : 'К'}">К</div>
+
+            <div class="post-author-info">
+              <a th:href="@{/clubs/{id}(id=${post.clubId})}" class="post-club-name" th:text="${post.clubName}">Название клуба</a>
+              <span class="post-date">
+                <span th:if="${post.createdAt != null}" th:text="${#temporals.format(post.createdAt, 'dd.MM.yyyy HH:mm')}">Дата</span>
+                <span th:if="${post.isEdited}"> · Изменено</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="post-menu-wrapper"
+               th:if="${currentUser != null and (currentUser.isAppAdmin or post.authorId == currentUser.userId)}">
+            <button type="button" class="post-menu-btn" onclick="togglePostMenu(event, this)" title="Действия">
+              <span class="dots-horizontal">•••</span>
+            </button>
+            <div class="profile-dropdown post-dropdown">
+              <form th:action="@{/clubs/{clubId}/posts/{postId}/delete(clubId=${post.clubId}, postId=${post.postId})}"
+                    method="POST"
+                    style="margin: 0;"
+                    onsubmit="return confirm('Удалить этот пост?')">
+                <button type="submit" class="dropdown-item danger">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                  Удалить пост
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <h2 class="post-title" th:text="${post.title}">Заголовок поста</h2>
+        <p class="post-body clamped" th:text="${post.body}">Текст поста</p>
+        <div class="post-image" th:if="${post.imageUrl != null and !post.imageUrl.isEmpty()}">
+          <img th:src="${post.imageUrl}" alt="Вложение к посту" style="width: 100%; display: block;">
+        </div>
+        <form th:if="${post.poll != null and post.poll.options != null}"
+              th:action="@{/polls/{pollId}/vote(pollId=${post.poll.pollId})}"
+              method="POST"
+              class="post-poll"
+              th:classappend="${post.poll.closed} ? 'poll-closed'">
+          <input type="hidden" name="returnUrl" th:value="${param.tab != null and param.tab[0] == 'subscriptions' ? '/feed?tab=subscriptions' : '/feed'}">
+
+          <th:block th:with="totalVotes=${#aggregates.sum(post.poll.options.![total]) ?: 0}">
+            <button type="submit"
+                    name="voteId"
+                    th:each="v : ${post.poll.options}"
+                    th:value="${v.voteId}"
+                    class="poll-option-btn"
+                    th:classappend="${v.selectedByCurrentUser} ? 'selected'">
+              <div class="poll-bar" th:style="'width: ' + (${totalVotes > 0 ? (v.total * 100 / totalVotes) : 0}) + '%;'"></div>
+              <span class="poll-label" th:text="${v.vote}">Вариант ответа</span>
+              <span class="poll-votes" th:text="${v.total + ' голосов'}">0 голосов</span>
+            </button>
+
+            <div class="poll-total">
+              <span th:if="${post.poll.closed}">Опрос завершён · </span>
+              <span th:text="'Всего ' + ${totalVotes} + ' голосов'">Всего 0 голосов</span>
+            </div>
+          </th:block>
+        </form>
+        <div class="post-actions">
+          <a th:href="@{/posts/{id}(id=${post.postId})}" class="post-action-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span th:text="${(post.comments != null ? post.comments.size() : 0) + ' комментариев'}">0 комментариев</span>
+          </a>
+          <button type="button" class="post-action-btn" th:attr="onclick=|copyPostLink('/posts/${post.postId}', this)|">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            <span>Поделиться</span>
+          </button>
+        </div>
+      </article>
+    </div>
+    <aside class="sidebar-right" th:if="${popularClubs != null and !popularClubs.isEmpty()}">
+      <div class="widget-card">
+        <h3 class="widget-title">Популярные клубы</h3>
+        <ul class="popular-clubs-list">
+          <li th:each="popClub : ${popularClubs}">
+            <a th:href="@{/clubs/{id}(id=${popClub.clubId})}" class="popular-club-item">
+              <div class="club-avatar-placeholder" th:text="${#strings.toUpperCase(#strings.substring(popClub.club, 0, 1))}">К</div>
+              <div class="popular-club-info">
+                <span class="popular-club-name" th:text="${popClub.club}">Клуб</span>
+                <span class="popular-club-members" th:text="${popClub.members.size() + ' участников'}">0 участников</span>
+              </div>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+  <div th:replace="~{fragments/layout :: createClubModal}"></div>
+  <script th:src="@{/js/main.js}"></script>
+</body>
+</html>

@@ -843,9 +843,9 @@ class PostServiceTest {
         when(attachmentPostRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
         when(pollRepository.findByPostPostIdIn(List.of(100))).thenReturn(List.of());
 
-        CommentResponse reply = new CommentResponse(201, 2, "Mod", "User", "MODERATOR",
+        CommentResponse reply = new CommentResponse(201, 2, "Mod", "User", null, "MODERATOR",
                 "Reply", LocalDateTime.of(2026, 5, 1, 13, 0), 200, List.of());
-        CommentResponse root = new CommentResponse(200, 1, "Ivan", "Petrov", "ADMIN",
+        CommentResponse root = new CommentResponse(200, 1, "Ivan", "Petrov", null, "ADMIN",
                 "Root", LocalDateTime.of(2026, 5, 1, 12, 0), null, List.of(reply));
         when(commentService.getCommentTreesByPostIds(List.of(100), 10)).thenReturn(Map.of(100, List.of(root)));
 
