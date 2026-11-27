@@ -36,25 +36,31 @@
         • member.club — ссылка на объект Club
         • member.userRole — роль в клубе ('MEMBER', 'MODERATOR', 'ADMIN')
 
-    **Модель post (Post)**
+    **Модель post в шаблонах (PostListItemResponse, `postsList` / страница поста)**
         • post.postId — ID поста
         • post.title — заголовок поста
         • post.body — основной текст поста
         • post.createdAt — дата публикации
-        • post.isEdited — флаг редактирования
-        • post.club — объект Club (авторский клуб)
-        • post.user — объект User (автор поста)
-        • post.attachments — список вложений (List<AttachmentPost>)
-        • post.comments — список комментариев (List<Comment>)
-        • post.poll — прикрепленный опрос (объект Poll, может быть null)
+        • post.edited — флаг редактирования
+        • post.authorId — ID автора
+        • post.authorFirstName, post.authorLastName — имя/фамилия автора
+        • post.authorProfilePictureUrl — URL аватарки автора (может быть null/пустым)
+        • post.clubId, post.clubName — ID и название клуба
+        • post.clubPictureUrl — URL аватарки клуба (может быть null/пустым)
+        • post.imageUrl — URL изображения поста (может быть null/пустым)
+        • post.poll — опрос (PollResponse, может быть null)
+        • post.comments — список комментариев (List<CommentResponse>)
 
-    **Модель comment (Сomment)**
+    **Модель comment в шаблонах (CommentResponse)**
         • comment.commentId — ID комментария
+        • comment.authorId — ID автора
+        • comment.authorFirstName, comment.authorLastName — имя/фамилия автора
+        • comment.authorProfilePictureUrl — URL аватарки автора (может быть null/пустым)
+        • comment.authorRoleInClub — роль автора в клубе (`MEMBER`/`MODERATOR`/`ADMIN`, может быть null)
         • comment.comment — текст комментария
         • comment.createdAt — дата создания
-        • comment.isDeleted — флаг удаления
-        • comment.user — объект User (автор)
-        • comment.parent — родительский Comment (для ответов, для корневых — null)
+        • comment.parentId — ID родительского комментария (null для корневого)
+        • comment.replies — список ответов (List<CommentResponse>)
 
     **Модели опросов (Poll и Vote)**
         • poll.pollId, poll.title, poll.isMultiple, poll.votes (список вариантов List<Vote>)
