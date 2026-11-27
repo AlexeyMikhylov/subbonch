@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${post.title + ' — SubBonch'}">Пост — SubBonch</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/icon_light.svg}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <header th:replace="~{fragments/layout :: header}"></header>
+    <aside th:replace="~{fragments/layout :: sidebar('feed')}"></aside>
+    <main class="content-area">
+    <div class="feed-container" th:with="club=${post.club}">
+      <div class="alert-banner success" th:if="${successMessage != null}" th:text="${successMessage}"></div>
+      <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
+
+      <a th:href="@{/clubs/{id}(id=${club.clubId})}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+        <span>Назад</span>
+      </a>
+
+      <article class="post-card">
+        <div class="post-header">
+          <div class="post-author">
+            <img th:if="${club.pictureUrl != null and !club.pictureUrl.isEmpty()}"
+                 th:src="${club.pictureUrl}"
+                 alt=""
+                 class="club-avatar-placeholder"
+                 style="object-fit: cover;">
+            <div th:unless="${club.pictureUrl != null and !club.pictureUrl.isEmpty()}"
+                 class="club-avatar-placeholder"
+                 th:text="${#strings.toUpperCase(#strings.substring(club.club, 0, 1))}">К</div>
+            <div class="post-author-info">
+              <a th:href="@{/clubs/{id}(id=${club.clubId})}" class="post-club-name" th:text="${club.club}">Клуб</a>
+              <span class="post-date">
+                <span th:text="${#temporals.format(post.createdAt, 'dd.MM.yyyy HH:mm')}">Дата</span>
+                <span th:if="${post.isEdited}"> · Изменено</span>
+              </span>
+            </div>
+          </div>
+          <div class="post-menu-wrapper"
+               th:if="${currentUser != null and (currentUser.isAppAdmin or userRoleInClub == 'ADMIN' or userRoleInClub == 'MODERATOR' or (post.user != null and post.user.userId == currentUser.userId))}">
+            <button type="button" class="post-menu-btn" onclick="togglePostMenu(event, this)" title="Действия">
+              <span class="dots-horizontal">•••</span>
+            </button>
+            <div class="profile-dropdown post-dropdown">
+              <form th:action="@{/clubs/{clubId}/posts/{postId}/delete(clubId=${club.clubId}, postId=${post.postId})}"
+                    method="POST"
+                    style="margin: 0;"
+                    onsubmit="return confirm('Удалить этот пост?')">
+                <button type="submit" class="dropdown-item danger">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                  Удалить пост
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <h1 class="post-title" th:text="${post.title}">Заголовок поста</h1>
+        <p class="post-body" th:text="${post.body}">Текст поста</p>
+        <div class="post-image" th:if="${post.attachments != null and !post.attachments.isEmpty()}" th:each="att : ${post.attachments}">
+          <img th:src="${att.url}" alt="Вложение к посту" style="width: 100%; display: block;">
+        </div>
+
+        <form th:if="${post.poll != null}"
+              th:action="@{/polls/{pollId}/vote(pollId=${post.poll.pollId})}"
+              method="POST"
+              class="post-poll">
+          <input type="hidden" name="returnUrl" th:value="'/posts/' + ${post.postId}">
+
+          <th:block th:with="totalVotes=${#aggregates.sum(post.poll.votes.![total]) ?: 0}">
+            <button type="submit"
+                    name="voteId"
+                    th:each="v : ${post.poll.votes}"
+                    th:value="${v.voteId}"
+                    class="poll-option-btn">
+              <div class="poll-bar" th:style="'width: ' + (${totalVotes > 0 ? (v.total * 100 / totalVotes) : 0}) + '%;'"></div>
+              <span class="poll-label" th:text="${v.vote}">Вариант ответа</span>
+              <span class="poll-votes" th:text="${v.total + ' голосов'}">0 голосов</span>
+            </button>
+
+            <div class="poll-total" th:text="'Всего ' + ${totalVotes} + ' голосов'">Всего 0 голосов</div>
+          </th:block>
+        </form>
+
+        <div class="post-actions">
+          <div class="post-action-btn" style="cursor: default;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span th:text="${(post.comments != null ? post.comments.size() : 0) + ' комментариев'}">0 комментариев</span>
+          </div>
+          <button type="button" class="post-action-btn" th:attr="onclick=|copyPostLink('/posts/${post.postId}', this)|">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            <span>Поделиться</span>
+          </button>
+        </div>
+      </article>
+
+      <section class="comments-card">
+        <h2 class="comments-title">Комментарии <span th:text="${post.comments != null ? post.comments.size() : 0}">0</span></h2>
+
+        <form th:if="${currentUser != null}"
+              th:action="@{/posts/{id}/comments(id=${post.postId})}"
+              method="POST"
+              class="comment-form">
+          <div class="club-avatar-placeholder small"
+               th:text="${#strings.toUpperCase(#strings.substring(currentUser.firstName, 0, 1))}">И</div>
+          <div class="comment-form-body">
+            <textarea name="comment" class="comment-input" rows="2" maxlength="2000" placeholder="Написать комментарий..." required></textarea>
+            <div class="comment-form-actions">
+              <button type="submit" class="btn-publish-sm">Отправить</button>
+            </div>
+          </div>
+        </form>
+        <div class="comments-list">
+          <p class="empty-comments-text" th:if="${post.comments == null or post.comments.isEmpty()}">
+            Комментариев пока нет. Будьте первым!
+          </p>
+
+          <div class="comment-thread" th:each="c : ${post.comments}" th:if="${c.parent == null}">
+            <div class="comment-item">
+              <div class="club-avatar-placeholder small"
+                   th:text="${c.isDeleted ? '?' : #strings.toUpperCase(#strings.substring(c.user.firstName, 0, 1))}">А</div>
+              <div class="comment-content">
+                <p class="comment-text deleted" th:if="${c.isDeleted}">Комментарий удалён</p>
+
+                <th:block th:unless="${c.isDeleted}">
+                  <div class="comment-header">
+                    <span class="comment-author" th:text="${c.user.firstName + ' ' + c.user.lastName}">Имя Фамилия</span>
+                    <span class="comment-date" th:text="${#temporals.format(c.createdAt, 'dd.MM.yyyy HH:mm')}">Дата</span>
+                  </div>
+                  <p class="comment-text" th:text="${c.comment}">Текст комментария</p>
+                  <div class="comment-footer" th:if="${currentUser != null}">
+                    <button type="button" class="comment-action-link"
+                            th:attr="onclick=|toggleReplyForm('reply-form-${c.commentId}')|">Ответить</button>
+                    <form th:if="${currentUser.isAppAdmin or userRoleInClub == 'ADMIN' or userRoleInClub == 'MODERATOR' or c.user.userId == currentUser.userId}"
+                          th:action="@{/comments/{commentId}/delete(commentId=${c.commentId})}"
+                          method="POST"
+                          style="display: inline;"
+                          onsubmit="return confirm('Удалить этот комментарий?')">
+                      <input type="hidden" name="returnUrl" th:value="'/posts/' + ${post.postId}">
+                      <button type="submit" class="comment-action-link danger">Удалить</button>
+                    </form>
+                  </div>
+
+                  <form th:if="${currentUser != null}"
+                        th:action="@{/posts/{id}/comments(id=${post.postId})}"
+                        method="POST"
+                        class="reply-form"
+                        th:id="'reply-form-' + ${c.commentId}"
+                        style="display: none;">
+                    <input type="hidden" name="parentId" th:value="${c.commentId}">
+                    <textarea name="comment" class="comment-input" rows="2" maxlength="2000" placeholder="Написать ответ..." required></textarea>
+                    <div class="comment-form-actions">
+                      <button type="button" class="btn-cancel-sm"
+                              th:attr="onclick=|toggleReplyForm('reply-form-${c.commentId}')|">Отмена</button>
+                      <button type="submit" class="btn-publish-sm">Ответить</button>
+                    </div>
+                  </form>
+                </th:block>
+              </div>
+            </div>
+            <div class="comment-replies">
+              <div class="comment-item"
+                   th:each="reply : ${post.comments}"
+                   th:if="${reply.parent != null and reply.parent.commentId == c.commentId}">
+                <div class="club-avatar-placeholder small"
+                     th:text="${reply.isDeleted ? '?' : #strings.toUpperCase(#strings.substring(reply.user.firstName, 0, 1))}">М</div>
+                <div class="comment-content">
+                  <p class="comment-text deleted" th:if="${reply.isDeleted}">Комментарий удалён</p>
+
+                  <th:block th:unless="${reply.isDeleted}">
+                    <div class="comment-header">
+                      <span class="comment-author" th:text="${reply.user.firstName + ' ' + reply.user.lastName}">Имя Фамилия</span>
+                      <span class="comment-date" th:text="${#temporals.format(reply.createdAt, 'dd.MM.yyyy HH:mm')}">Дата</span>
+                    </div>
+                    <p class="comment-text" th:text="${reply.comment}">Текст ответа</p>
+                    <div class="comment-footer" th:if="${currentUser != null}">
+                      <button type="button" class="comment-action-link"
+                              th:attr="onclick=|toggleReplyForm('reply-form-${reply.commentId}')|">Ответить</button>
+                      <form th:if="${currentUser.isAppAdmin or userRoleInClub == 'ADMIN' or userRoleInClub == 'MODERATOR' or reply.user.userId == currentUser.userId}"
+                            th:action="@{/comments/{commentId}/delete(commentId=${reply.commentId})}"
+                            method="POST"
+                            style="display: inline;"
+                            onsubmit="return confirm('Удалить этот комментарий?')">
+                        <input type="hidden" name="returnUrl" th:value="'/posts/' + ${post.postId}">
+                        <button type="submit" class="comment-action-link danger">Удалить</button>
+                      </form>
+                    </div>
+
+                    <form th:if="${currentUser != null}"
+                          th:action="@{/posts/{id}/comments(id=${post.postId})}"
+                          method="POST"
+                          class="reply-form"
+                          th:id="'reply-form-' + ${reply.commentId}"
+                          style="display: none;">
+                      <input type="hidden" name="parentId" th:value="${c.commentId}">
+                      <textarea name="comment" class="comment-input" rows="2" maxlength="2000" placeholder="Написать ответ..." required></textarea>
+                      <div class="comment-form-actions">
+                        <button type="button" class="btn-cancel-sm"
+                                th:attr="onclick=|toggleReplyForm('reply-form-${reply.commentId}')|">Отмена</button>
+                        <button type="submit" class="btn-publish-sm">Ответить</button>
+                      </div>
+                    </form>
+                  </th:block>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="sidebar-right" th:with="club=${post.club}">
+      <div class="widget-card">
+        <div class="sidebar-club-header">
+          <img th:if="${club.pictureUrl != null and !club.pictureUrl.isEmpty()}"
+               th:src="${club.pictureUrl}"
+               alt=""
+               class="club-avatar-placeholder"
+               style="object-fit: cover;">
+          <div th:unless="${club.pictureUrl != null and !club.pictureUrl.isEmpty()}"
+               class="club-avatar-placeholder"
+               th:text="${#strings.toUpperCase(#strings.substring(club.club, 0, 1))}">К</div>
+          <div class="sidebar-club-info">
+            <a th:href="@{/clubs/{id}(id=${club.clubId})}" class="sidebar-club-name" th:text="${club.club}">Клуб</a>
+            <span class="sidebar-club-members" th:if="${club.members != null}"
+                  th:text="${club.members.size() + ' участников'}">0 участников</span>
+          </div>
+        </div>
+
+        <p class="club-about-text" th:text="${club.about != null and !club.about.isEmpty() ? club.about : 'Описание клуба пока не добавлено.'}">
+          Описание клуба
+        </p>
+
+        <p class="club-created-date sidebar-club-date" th:if="${club.createdAt != null}"
+           th:text="'Создано ' + ${#temporals.format(club.createdAt, 'dd/MM/yyyy')}">Создано 12/10/2020</p>
+
+        <form th:if="${userRoleInClub == null or userRoleInClub == 'NONE'}"
+              th:action="@{/clubs/{id}/join(id=${club.clubId})}"
+              method="POST"
+              style="margin: 0;">
+          <button type="submit" class="btn-club-join full-width">Вступить</button>
+        </form>
+
+        <form th:if="${userRoleInClub != null and userRoleInClub != 'NONE'}"
+              th:action="@{/clubs/{id}/leave(id=${club.clubId})}"
+              method="POST"
+              style="margin: 0;"
+              onsubmit="return confirm('Вы уверены, что хотите покинуть клуб?')">
+          <button type="submit" class="btn-club-joined full-width">Вы участник</button>
+        </form>
+      </div>
+      <div class="widget-card" th:if="${club.members != null and !club.members.isEmpty()}">
+        <h3 class="widget-title">Команда</h3>
+        <ul class="team-list">
+          <li class="team-member-item"
+              th:each="member : ${club.members}"
+              th:if="${member.userRole == 'ADMIN' or member.userRole == 'MODERATOR'}">
+            <div class="club-avatar-placeholder small"
+                 th:text="${#strings.toUpperCase(#strings.substring(member.user.firstName, 0, 1))}">А</div>
+            <div class="team-member-info">
+              <span class="team-member-name" th:text="${member.user.firstName + ' ' + member.user.lastName}">Имя Фамилия</span>
+              <span class="role-badge admin" th:if="${member.userRole == 'ADMIN'}">админ</span>
+              <span class="role-badge moder" th:if="${member.userRole == 'MODERATOR'}">модер</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+  <div th:replace="~{fragments/layout :: createClubModal}"></div>
+  <script th:src="@{/js/main.js}"></script>
+</body>
+</html>
+
+

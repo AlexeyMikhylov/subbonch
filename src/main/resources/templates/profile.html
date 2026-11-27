@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Профиль — SubBonch</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/icon_light.svg}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <header th:replace="~{fragments/layout :: header}"></header>
+  <aside th:replace="~{fragments/layout :: sidebar('profile')}"></aside>
+  <main class="content-area">
+    <div class="feed-container" th:if="${currentUser != null}">
+      <div class="alert-banner success" th:if="${successMessage != null}" th:text="${successMessage}"></div>
+      <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
+      <div class="profile-card">
+        <div class="profile-cover"></div>
+        <div class="profile-body">
+          <img th:if="${currentUser.profilePictureUrl != null and !currentUser.profilePictureUrl.isEmpty()}"
+               th:src="${currentUser.profilePictureUrl}"
+               th:alt="${currentUser.firstName}"
+               class="profile-avatar-img profile-avatar-view">
+          <div th:unless="${currentUser.profilePictureUrl != null and !currentUser.profilePictureUrl.isEmpty()}"
+               class="profile-avatar-placeholder"
+               th:text="${#strings.toUpperCase(#strings.substring(currentUser.firstName, 0, 1))}">И</div>
+
+          <div class="profile-header-row">
+            <h1 class="profile-name" th:text="${currentUser.firstName + ' ' + currentUser.lastName}">Иван Иванов</h1>
+            <div class="profile-menu-wrapper">
+              <button type="button" class="profile-menu-btn" onclick="toggleDropdown()" title="Действия">
+                <span class="dots-horizontal">•••</span>
+              </button>
+              <div class="profile-dropdown" id="profileDropdown">
+                <a th:href="@{/profile/edit}" class="dropdown-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  Редактировать профиль
+                </a>
+                <div class="dropdown-divider"></div>
+                <form th:action="@{/logout}" method="POST" style="margin: 0;" onsubmit="return confirm('Выйти из аккаунта?')">
+                  <button type="submit" class="dropdown-item danger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                      <polyline points="16 17 21 12 16 7"/>
+                      <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Выйти
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <p class="profile-about"
+             th:if="${currentUser.about != null and !currentUser.about.isEmpty()}"
+             th:text="${currentUser.about}">
+            Описание пользователя
+          </p>
+          <p class="profile-about-empty"
+             th:if="${currentUser.about == null or currentUser.about.isEmpty()}">
+            Описание пока не заполнено
+          </p>
+
+          <p class="profile-date" th:if="${currentUser.createdAt != null}"
+             th:text="'На SubBonch с ' + ${#temporals.format(currentUser.createdAt, 'dd/MM/yyyy')}">
+            На SubBonch с 01/01/2027
+          </p>
+          <div class="profile-divider"></div>
+          <div class="profile-stats">
+            <div class="stat-item">
+              <svg class="stat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <span><strong th:text="${myClubs != null ? myClubs.size() : 0}">0</strong> клубов</span>
+            </div>
+            <div class="stat-item" th:if="${commentsCount != null}">
+              <svg class="stat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span><strong th:text="${commentsCount}">0</strong> комментариев</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div th:replace="~{fragments/layout :: createClubModal}"></div>
+  <script th:src="@{/js/main.js}"></script>
+</body>
+</html>

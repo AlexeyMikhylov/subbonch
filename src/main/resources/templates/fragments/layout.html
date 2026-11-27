@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<body>
+  <header class="site-header" th:fragment="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <a th:href="@{/feed}">
+          <img th:src="@{/images/logo_light_feed.svg}" alt="SubBonch" class="header-logo">
+        </a>
+      </div>
+      <div class="header-center">
+        <form th:action="@{/clubs}" method="GET" class="search-wrapper">
+          <input type="text" name="q" th:value="${param.q}" class="header-search" placeholder="Поиск клубов...">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </form>
+      </div>
+      <div class="header-right">
+        <button type="button" class="header-icon-btn" title="Уведомления">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+        <a th:href="@{/profile}" th:if="${currentUser != null}">
+          <img th:if="${currentUser.profilePictureUrl != null and !currentUser.profilePictureUrl.isEmpty()}"
+               th:src="${currentUser.profilePictureUrl}"
+               alt="Профиль"
+               class="user-avatar-placeholder"
+               style="object-fit: cover;">
+          <div th:unless="${currentUser.profilePictureUrl != null and !currentUser.profilePictureUrl.isEmpty()}"
+               class="user-avatar-placeholder"
+               th:text="${#strings.toUpperCase(#strings.substring(currentUser.firstName, 0, 1))}">И</div>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar-left" th:fragment="sidebar(activePage)">
+    <nav class="sidebar-nav">
+      <a th:href="@{/feed}" class="nav-item" th:classappend="${activePage == 'feed'} ? 'active'">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <span>Лента</span>
+      </a>
+      <a th:href="@{/clubs}" class="nav-item" th:classappend="${activePage == 'clubs'} ? 'active'">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          <line x1="8" y1="7" x2="16" y2="7"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+        <span>Каталог</span>
+      </a>
+      <a th:href="@{/admin}"
+         th:if="${currentUser != null and currentUser.isAppAdmin}"
+         class="nav-item"
+         th:classappend="${activePage == 'admin'} ? 'active'">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Админ-панель</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <h3 class="sidebar-title">Мои клубы</h3>
+      <ul class="clubs-list" id="clubsList" th:if="${myClubs != null and !myClubs.isEmpty()}">
+        <li th:each="myClub : ${myClubs}">
+          <img th:if="${myClub.pictureUrl != null and !myClub.pictureUrl.isEmpty()}"
+               th:src="${myClub.pictureUrl}"
+               alt=""
+               class="club-avatar-placeholder"
+               style="object-fit: cover;">
+          <div th:unless="${myClub.pictureUrl != null and !myClub.pictureUrl.isEmpty()}"
+               class="club-avatar-placeholder"
+               th:text="${#strings.toUpperCase(#strings.substring(myClub.club, 0, 1))}">К</div>
+          <a th:href="@{/clubs/{id}(id=${myClub.clubId})}" th:text="${myClub.club}">Название клуба</a>
+        </li>
+      </ul>
+      <p class="empty-sidebar-text" th:if="${myClubs == null or myClubs.isEmpty()}">
+        Вы пока не состоите ни в одном клубе
+      </p>
+      <a href="#" class="show-more" id="showMoreBtn" style="display: none;" onclick="toggleClubs(event)">Показать ещё →</a>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-spacer"></div>
+
+    <button type="button" class="btn-create-club" onclick="openCreateClubModal()">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>Создать клуб</span>
+    </button>
+  </aside>
+
+  <div class="modal-overlay" id="createClubModal" style="display: none;" aria-hidden="true" th:fragment="createClubModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="createClubModalTitle">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="createClubModalTitle">Заявка на создание клуба</h2>
+          <p class="modal-subtitle">Заявку рассмотрит администратор платформы</p>
+        </div>
+        <button type="button" class="modal-close" onclick="closeCreateClubModal()" title="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <form th:action="@{/applications/create}" method="POST" class="modal-form">
+        <div class="form-group">
+          <label class="form-label-custom" for="clubName">Название клуба</label>
+          <input type="text" id="clubName" name="clubName" class="form-input" placeholder="Например: Киноклуб Бонча" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label-custom" for="appDescription">Описание клуба</label>
+          <textarea id="appDescription" name="appDescription" class="form-textarea" rows="3" placeholder="Расскажите, чем будет заниматься клуб и для кого он" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label-custom" for="reason">Обоснование создания</label>
+          <textarea id="reason" name="reason" class="form-textarea" rows="3" placeholder="Почему этот клуб нужен студентам и какие мероприятия планируются?" required></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeCreateClubModal()">Отмена</button>
+          <button type="submit" class="btn-submit-modal">Отправить заявку</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>

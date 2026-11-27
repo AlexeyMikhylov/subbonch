@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Панель администратора — SubBonch</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/icon_light.svg}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <header th:replace="~{fragments/layout :: header}"></header>
+  <aside th:replace="~{fragments/layout :: sidebar('admin')}"></aside>
+  <main class="content-area">
+    <div class="feed-container">
+      <div class="alert-banner success" th:if="${successMessage != null}" th:text="${successMessage}"></div>
+      <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
+      <section class="catalog-header-card">
+        <div class="catalog-title-row" style="margin-bottom: 0;">
+          <h1 class="catalog-title">Заявки на создание клубов</h1>
+          <span class="catalog-count" th:text="${(applications != null ? applications.size() : 0) + ' ожидают'}">0 ожидают</span>
+        </div>
+      </section>
+      <div class="empty-state-card" th:if="${applications == null or applications.isEmpty()}">
+        <h3>Новых заявок пока нет</h3>
+        <p>Все заявки на создание клубов рассмотрены.</p>
+      </div>
+      <div class="applications-list" th:if="${applications != null and !applications.isEmpty()}">
+        <article class="application-card" th:each="app : ${applications}">
+          <div class="application-header">
+            <div class="application-club-main">
+              <div class="club-avatar-placeholder"
+                   th:text="${app.clubName != null and !app.clubName.isEmpty() ? #strings.toUpperCase(#strings.substring(app.clubName, 0, 1)) : 'К'}">К</div>
+              <div>
+                <h2 class="application-club-name" th:text="${app.clubName}">Название клуба</h2>
+                <span class="application-id" th:text="'Заявка #' + ${app.applicationId}">Заявка #1</span>
+              </div>
+            </div>
+            <span class="status-badge pending">На рассмотрении</span>
+          </div>
+
+          <div class="application-section">
+            <span class="application-label">Описание клуба</span>
+            <p class="application-text" th:text="${app.appDescription}">Описание клуба</p>
+          </div>
+
+          <div class="application-section">
+            <span class="application-label">Обоснование создания</span>
+            <p class="application-text" th:text="${app.reason}">Обоснование создания</p>
+          </div>
+
+          <div class="application-footer">
+            <form th:action="@{/admin/applications/{id}/approve(id=${app.applicationId})}"
+                  method="POST"
+                  style="margin: 0;"
+                  onsubmit="return confirm('Одобрить заявку и создать клуб?')">
+              <button type="submit" class="btn-submit-modal">Одобрить и создать клуб</button>
+            </form>
+          </div>
+        </article>
+      </div>
+
+    </div>
+  </main>
+  <div th:replace="~{fragments/layout :: createClubModal}"></div>
+  <script th:src="@{/js/main.js}"></script>
+</body>
+</html>

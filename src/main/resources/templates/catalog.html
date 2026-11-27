@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Каталог клубов — SubBonch</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/icon_light.svg}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <header th:replace="~{fragments/layout :: header}"></header>
+  <aside th:replace="~{fragments/layout :: sidebar('clubs')}"></aside>
+  <main class="content-area">
+    <div class="feed-container">
+      <div class="alert-banner success" th:if="${successMessage != null}" th:text="${successMessage}"></div>
+      <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
+      <section class="catalog-header-card">
+        <div class="catalog-title-row" style="margin-bottom: 0;">
+          <h1 class="catalog-title">Каталог клубов</h1>
+          <span class="catalog-count" th:text="${clubsPage.totalElements + ' сообществ'}">0 сообществ</span>
+        </div>
+      </section>
+      <div class="empty-state-card" th:if="${clubsPage.content == null or clubsPage.content.isEmpty()}">
+        <h3>По вашему запросу ничего не найдено</h3>
+        <p>Попробуйте изменить поисковый запрос или подайте заявку на создание нового сообщества.</p>
+        <a th:href="@{/clubs}" class="btn-submit-modal btn-link-reset">Показать все клубы</a>
+      </div>
+
+      <div class="catalog-list" th:if="${clubsPage.content != null and !clubsPage.content.isEmpty()}">
+        <article class="catalog-card"
+                 th:each="item : ${clubsPage.content}"
+                 th:with="isMember=${myClubs != null and !myClubs.?[clubId == #root.item.clubId].isEmpty()}">
+          <div class="catalog-card-main">
+            <a th:href="@{/clubs/{id}(id=${item.clubId})}"
+               th:if="${item.pictureUrl != null and !item.pictureUrl.isEmpty()}">
+              <img th:src="${item.pictureUrl}"
+                   th:alt="${item.club}"
+                   class="club-avatar-placeholder catalog-avatar"
+                   style="object-fit: cover;">
+            </a>
+            <a th:href="@{/clubs/{id}(id=${item.clubId})}"
+               th:unless="${item.pictureUrl != null and !item.pictureUrl.isEmpty()}"
+               class="club-avatar-placeholder catalog-avatar"
+               th:text="${#strings.toUpperCase(#strings.substring(item.club, 0, 1))}">К</a>
+
+            <div class="catalog-card-info">
+              <div class="catalog-card-top">
+                <a th:href="@{/clubs/{id}(id=${item.clubId})}" class="catalog-card-name" th:text="${item.club}">Название клуба</a>
+                <span class="catalog-card-members"
+                      th:if="${item.membersCount != null}"
+                      th:text="${item.membersCount + ' участников'}">0 участников</span>
+              </div>
+              <p class="catalog-card-about"
+                 th:text="${item.about != null and !item.about.isEmpty() ? item.about : 'Описание клуба пока не добавлено.'}">
+                Описание клуба
+              </p>
+            </div>
+          </div>
+
+          <div class="catalog-card-action" th:if="${currentUser != null}">
+            <form th:if="${isMember}"
+                  th:action="@{/clubs/{id}/leave(id=${item.clubId})}"
+                  method="POST"
+                  style="margin: 0;"
+                  onsubmit="return confirm('Вы уверены, что хотите покинуть клуб?')">
+              <button type="submit" class="btn-club-joined">Вы участник</button>
+            </form>
+            <form th:unless="${isMember}"
+                  th:action="@{/clubs/{id}/join(id=${item.clubId})}"
+                  method="POST"
+                  style="margin: 0;">
+              <button type="submit" class="btn-club-join">Вступить</button>
+            </form>
+          </div>
+        </article>
+      </div>
+      <div class="pagination catalog-pagination" th:if="${clubsPage.totalPages > 1}">
+        <a th:href="@{/clubs(q=${param.q}, page=${clubsPage.page - 1}, size=${clubsPage.size})}"
+           class="page-btn"
+           th:classappend="${clubsPage.page == 0} ? 'disabled'">← Назад</a>
+        <div class="page-numbers">
+          <a th:each="p : ${#numbers.sequence(0, clubsPage.totalPages - 1)}"
+             th:href="@{/clubs(q=${param.q}, page=${p}, size=${clubsPage.size})}"
+             class="page-num"
+             th:classappend="${p == clubsPage.page} ? 'active'"
+             th:text="${p + 1}">1</a>
+        </div>
+        <a th:href="@{/clubs(q=${param.q}, page=${clubsPage.page + 1}, size=${clubsPage.size})}"
+           class="page-btn"
+           th:classappend="${clubsPage.page + 1 >= clubsPage.totalPages} ? 'disabled'">Вперёд →</a>
+      </div>
+    </div>
+  </main>
+  <div th:replace="~{fragments/layout :: createClubModal}"></div>
+  <script th:src="@{/js/main.js}"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Редактирование клуба — SubBonch</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/icon_light.svg}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <header th:replace="~{fragments/layout :: header}"></header>
+  <aside th:replace="~{fragments/layout :: sidebar('clubs')}"></aside>
+  <main class="content-area">
+    <div class="profile-card">
+      <div class="profile-cover"></div>
+      <div class="profile-body" th:with="formObj=${clubForm != null ? clubForm : club}">
+        <div class="profile-avatar-edit">
+          <div class="profile-avatar-placeholder"
+               id="avatarPreviewFallback"
+               th:text="${formObj != null and formObj.club != null and !formObj.club.isEmpty() ? #strings.toUpperCase(#strings.substring(formObj.club, 0, 1)) : 'К'}">К</div>
+          <img src="" alt="Аватар клуба" class="profile-avatar-img" id="avatarPreviewImg" style="display: none;">
+        </div>
+        <div class="profile-edit-header">
+          <h1 class="profile-edit-title">Редактирование клуба</h1>
+          <p class="profile-edit-subtitle">Обновите название, описание и изображение сообщества</p>
+        </div>
+        <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}">
+          Клуб с таким названием уже существует или поля заполнены некорректно.
+        </div>
+        <form th:action="@{/clubs/{id}/edit(id=${clubId != null ? clubId : club.clubId})}" method="POST" class="edit-form">
+          <div class="form-group">
+            <label class="form-label-custom" for="editClubName">Название клуба</label>
+            <input
+              type="text"
+              id="editClubName"
+              name="club"
+              class="form-input"
+              th:value="${formObj != null ? formObj.club : ''}"
+              placeholder="Введите название клуба"
+              oninput="previewAvatarLetter(this.value)"
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label class="form-label-custom" for="pictureUrl">Ссылка на изображение клуба</label>
+            <input
+              type="url"
+              id="pictureUrl"
+              name="pictureUrl"
+              class="form-input"
+              th:value="${formObj != null ? formObj.pictureUrl : ''}"
+              placeholder="https://example.com"
+              oninput="previewAvatarUrl(this.value)"
+            >
+          </div>
+          <div class="form-group">
+            <label class="form-label-custom" for="clubAbout">Описание клуба</label>
+            <textarea
+              id="clubAbout"
+              name="about"
+              class="form-textarea"
+              rows="4"
+              placeholder="Расскажите, чем занимается клуб и кого вы ждёте в команде..."
+              th:text="${formObj != null ? formObj.about : ''}"
+            ></textarea>
+          </div>
+          <div class="edit-form-footer">
+            <a th:href="@{/clubs/{id}(id=${clubId != null ? clubId : club.clubId})}" class="btn-secondary btn-link-reset">Отмена</a>
+            <button type="submit" class="btn-submit-modal">Сохранить изменения</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <div th:replace="~{fragments/layout :: createClubModal}"></div>
+  <script th:src="@{/js/main.js}"></script>
+</body>
+</html>
