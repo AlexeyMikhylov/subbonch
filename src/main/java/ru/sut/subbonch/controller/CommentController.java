@@ -3,6 +3,8 @@ package ru.sut.subbonch.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.sut.subbonch.entity.Post;
 import ru.sut.subbonch.repository.PostRepository;
 import ru.sut.subbonch.service.CommentService;
+import ru.sut.subbonch.service.PostService;
 
 @Controller
 @RequestMapping("/posts")
@@ -19,10 +22,28 @@ public class CommentController {
 
     private final CommentService commentService;
     private final PostRepository postRepository;
+    private final PostService postService;
 
-    public CommentController(CommentService commentService, PostRepository postRepository) {
+    public CommentController(CommentService commentService, PostRepository postRepository, PostService postService) {
         this.commentService = commentService;
         this.postRepository = postRepository;
+        this.postService = postService;
+    }
+
+    @GetMapping("/{id}")
+    public String postPage(@PathVariable Integer id, Model model, RedirectAttributes redirectAttributes) {
+        try {
+            var post = postService.getPost(id);
+            model.addAttribute("post", post);
+            model.addAttribute("userRoleInClub", postService.getCurrentUserRolesByClubIds(java.util.Set.of(post.clubId()))
+                    .getOrDefault(post.clubId(), "NONE"));
+            model.addAttribute("active", "feed");
+            return "post";
+        } catch (ResponseStatusException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    ex.getReason() == null ? "Пост не найден" : ex.getReason());
+            return "redirect:/feed";
+        }
     }
 
     @PostMapping("/{id}/comments")
