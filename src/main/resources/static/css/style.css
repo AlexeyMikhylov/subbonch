@@ -1532,11 +1532,6 @@ body:has(.auth-card) {
   background: #EEEEEE;
 }
 
-.btn-club-join.full-width,
-.btn-club-joined.full-width {
-  width: 100%;
-}
-
 /* ФОРМА СОЗДАНИЯ ПОСТА */
 .create-post-card {
   background: #FFFFFF;
@@ -2435,4 +2430,15 @@ body:has(.auth-card) {
 .btn-club-joined {
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.btn-club-join.full-width,
+.btn-club-joined.full-width {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
 }

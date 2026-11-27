@@ -31,8 +31,15 @@
                th:attr="onclick=|openPost(event, '/posts/${post.postId}')|">
         <div class="post-header">
           <div class="post-author">
-            <div class="club-avatar-placeholder"
-                 th:text="${post.clubName != null and !post.clubName.isEmpty() ? #strings.toUpperCase(#strings.substring(post.clubName, 0, 1)) : 'К'}">К</div>
+            <img th:if="${post.clubPictureUrl != null and !post.clubPictureUrl.isEmpty()}"
+              th:src="${post.clubPictureUrl}"
+              th:alt="${post.clubName}"
+              class="club-avatar-placeholder"
+              style="object-fit: cover;">
+            <div th:unless="${post.clubPictureUrl != null and !post.clubPictureUrl.isEmpty()}"
+              class="club-avatar-placeholder"
+              th:text="${post.clubName != null and !post.clubName.isEmpty() ? #strings.toUpperCase(#strings.substring(post.clubName, 0, 1)) : 'К'}">К</div>
+
             <div class="post-author-info">
               <a th:href="@{/clubs/{id}(id=${post.clubId})}" class="post-club-name" th:text="${post.clubName}">Название клуба</a>
               <span class="post-date">
