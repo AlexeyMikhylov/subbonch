@@ -35,33 +35,29 @@
         <ul class="members-list" th:if="${membersPage.content != null and !membersPage.content.isEmpty()}">
           <li class="member-row" th:each="member : ${membersPage.content}">
             <div class="member-info">
-              <img th:if="${member.profilePictureUrl != null and !member.profilePictureUrl.isEmpty()}"
-                   th:src="${member.profilePictureUrl}"
-                   alt=""
-                   class="club-avatar-placeholder"
-                   style="object-fit: cover;">
+              <div class="club-avatar-placeholder" th:text="${#strings.toUpperCase(#strings.substring(member.firstName, 0, 1))}">А</div>
               <div th:unless="${member.profilePictureUrl != null and !member.profilePictureUrl.isEmpty()}"
                    class="club-avatar-placeholder"
                    th:text="${#strings.toUpperCase(#strings.substring(member.firstName, 0, 1))}">А</div>
               <div class="member-details">
                 <div class="member-name-row">
                   <span class="member-name" th:text="${member.firstName + ' ' + member.lastName}">Имя Фамилия</span>
-                  <span class="role-badge admin" th:if="${member.userRole == 'ADMIN'}">админ</span>
-                  <span class="role-badge moder" th:if="${member.userRole == 'MODERATOR'}">модер</span>
+                  <span class="role-badge admin" th:if="${member.userRole.name() == 'ADMIN'}">админ</span>
+                  <span class="role-badge moder" th:if="${member.userRole.name() == 'MODERATOR'}">модер</span>
                 </div>
                 <span class="member-email" th:text="${member.email}">email@sut.ru</span>
               </div>
             </div>
             <div class="member-actions">
-              <span class="member-role-note" th:if="${member.userRole == 'ADMIN'}">Администратор клуба</span>
-              <form th:if="${member.userRole == 'MODERATOR'}"
+              <span class="member-role-note" th:if="${member.userRole.name() == 'ADMIN'}">Администратор клуба</span>
+              <form th:if="${member.userRole.name() == 'MODERATOR'}"
                     th:action="@{/clubs/{clubId}/members/{userId}/moderator/remove(clubId=${cId}, userId=${member.userId})}"
                     method="POST"
                     style="margin: 0;"
                     onsubmit="return confirm('Снять права модератора с этого пользователя?')">
                 <button type="submit" class="btn-role-remove">Снять модератора</button>
               </form>
-              <form th:if="${member.userRole == 'MEMBER'}"
+              <form th:if="${member.userRole.name() == 'MEMBER'}"
                     th:action="@{/clubs/{clubId}/members/{userId}/moderator/assign(clubId=${cId}, userId=${member.userId})}"
                     method="POST"
                     style="margin: 0;"

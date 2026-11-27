@@ -11,32 +11,32 @@
   <header th:replace="~{fragments/layout :: header}"></header>
   <aside th:replace="~{fragments/layout :: sidebar('profile')}"></aside>
   <main class="content-area">
-    <div class="profile-card" th:if="${currentUser != null}">
+    <div class="profile-card" th:if="${profileForm != null}">
       <div class="profile-cover"></div>
       <div class="profile-body">
         <div class="profile-avatar-edit">
           <div class="profile-avatar-placeholder"
                id="avatarPreviewFallback"
-               th:text="${#strings.toUpperCase(#strings.substring(currentUser.firstName, 0, 1))}">И</div>
+               th:text="${profileForm.firstName != null and !profileForm.firstName.isEmpty() ? #strings.toUpperCase(#strings.substring(profileForm.firstName, 0, 1)) : 'И'}">И</div>
           <img src="" alt="Аватар" class="profile-avatar-img" id="avatarPreviewImg" style="display: none;">
         </div>
+
         <div class="profile-edit-header">
           <h1 class="profile-edit-title">Редактирование профиля</h1>
           <p class="profile-edit-subtitle">Измените личную информацию, которую видят другие студенты</p>
         </div>
-        <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}">
+        <div class="alert-banner error" th:if="${error != null}" th:text="${error}">
           Проверьте правильность заполнения полей.
         </div>
-        <form th:action="@{/profile/edit}" method="POST" class="edit-form">
+        <form th:action="@{/profile/edit}" th:object="${profileForm}" method="POST" class="edit-form">
           <div class="form-row-2">
             <div class="form-group">
               <label class="form-label-custom" for="firstName">Имя</label>
               <input
                 type="text"
                 id="firstName"
-                name="firstName"
+                th:field="*{firstName}"
                 class="form-input"
-                th:value="${currentUser.firstName}"
                 placeholder="Введите имя"
                 oninput="previewAvatarLetter(this.value)"
                 required
@@ -47,9 +47,8 @@
               <input
                 type="text"
                 id="lastName"
-                name="lastName"
+                th:field="*{lastName}"
                 class="form-input"
-                th:value="${currentUser.lastName}"
                 placeholder="Введите фамилию"
                 required
               >
@@ -60,9 +59,8 @@
             <input
               type="url"
               id="profilePictureUrl"
-              name="profilePictureUrl"
+              th:field="*{profilePictureUrl}"
               class="form-input"
-              th:value="${currentUser.profilePictureUrl}"
               placeholder="https://example.com"
               oninput="previewAvatarUrl(this.value)"
             >
@@ -71,11 +69,10 @@
             <label class="form-label-custom" for="about">О себе</label>
             <textarea
               id="about"
-              name="about"
+              th:field="*{about}"
               class="form-textarea"
               rows="4"
               placeholder="Расскажите о себе, курсе, направлении или увлечениях..."
-              th:text="${currentUser.about}"
             ></textarea>
           </div>
           <div class="edit-form-footer">

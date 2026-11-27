@@ -2430,3 +2430,9 @@ body:has(.auth-card) {
   max-width: 360px;
   margin: 0 auto 20px;
 }
+
+.btn-club-join,
+.btn-club-joined {
+  white-space: nowrap;
+  flex-shrink: 0;
+}

@@ -11,22 +11,23 @@
   <header th:replace="~{fragments/layout :: header}"></header>
   <aside th:replace="~{fragments/layout :: sidebar('profile')}"></aside>
   <main class="content-area">
-    <div class="feed-container" th:if="${currentUser != null}">
+    <div class="feed-container" th:if="${profile != null}">
+      <div class="alert-banner success" th:if="${profileSuccess != null}" th:text="${profileSuccess}"></div>
       <div class="alert-banner success" th:if="${successMessage != null}" th:text="${successMessage}"></div>
       <div class="alert-banner error" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
+
       <div class="profile-card">
         <div class="profile-cover"></div>
         <div class="profile-body">
-          <img th:if="${currentUser.profilePictureUrl != null and !currentUser.profilePictureUrl.isEmpty()}"
-               th:src="${currentUser.profilePictureUrl}"
-               th:alt="${currentUser.firstName}"
+          <img th:if="${profile.profilePictureUrl != null and !profile.profilePictureUrl.isEmpty()}"
+               th:src="${profile.profilePictureUrl}"
+               th:alt="${profile.firstName}"
                class="profile-avatar-img profile-avatar-view">
-          <div th:unless="${currentUser.profilePictureUrl != null and !currentUser.profilePictureUrl.isEmpty()}"
+          <div th:unless="${profile.profilePictureUrl != null and !profile.profilePictureUrl.isEmpty()}"
                class="profile-avatar-placeholder"
-               th:text="${#strings.toUpperCase(#strings.substring(currentUser.firstName, 0, 1))}">И</div>
-
+               th:text="${#strings.toUpperCase(#strings.substring(profile.firstName, 0, 1))}">И</div>
           <div class="profile-header-row">
-            <h1 class="profile-name" th:text="${currentUser.firstName + ' ' + currentUser.lastName}">Иван Иванов</h1>
+            <h1 class="profile-name" th:text="${profile.firstName + ' ' + profile.lastName}">Иван Иванов</h1>
             <div class="profile-menu-wrapper">
               <button type="button" class="profile-menu-btn" onclick="toggleDropdown()" title="Действия">
                 <span class="dots-horizontal">•••</span>
@@ -53,20 +54,18 @@
               </div>
             </div>
           </div>
-
           <p class="profile-about"
-             th:if="${currentUser.about != null and !currentUser.about.isEmpty()}"
-             th:text="${currentUser.about}">
+             th:if="${profile.about != null and !profile.about.isEmpty()}"
+             th:text="${profile.about}">
             Описание пользователя
           </p>
           <p class="profile-about-empty"
-             th:if="${currentUser.about == null or currentUser.about.isEmpty()}">
+             th:if="${profile.about == null or profile.about.isEmpty()}">
             Описание пока не заполнено
           </p>
-
-          <p class="profile-date" th:if="${currentUser.createdAt != null}"
-             th:text="'На SubBonch с ' + ${#temporals.format(currentUser.createdAt, 'dd/MM/yyyy')}">
-            На SubBonch с 01/01/2027
+          <p class="profile-date" th:if="${profile.createdAt != null}"
+             th:text="'На SubBonch с ' + ${#temporals.format(profile.createdAt, 'dd/MM/yyyy')}">
+            На SubBonch с 10/05/2025
           </p>
           <div class="profile-divider"></div>
           <div class="profile-stats">
@@ -77,15 +76,16 @@
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              <span><strong th:text="${myClubs != null ? myClubs.size() : 0}">0</strong> клубов</span>
+              <span><strong th:text="${profile.clubsCount}">0</strong> клубов</span>
             </div>
-            <div class="stat-item" th:if="${commentsCount != null}">
+            <div class="stat-item">
               <svg class="stat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
-              <span><strong th:text="${commentsCount}">0</strong> комментариев</span>
+              <span><strong th:text="${profile.commentsCount}">0</strong> комментариев</span>
             </div>
           </div>
+
         </div>
       </div>
     </div>
