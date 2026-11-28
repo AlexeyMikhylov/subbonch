@@ -8,6 +8,7 @@ public record CommentResponse(
         Integer authorId,
         String authorFirstName,
         String authorLastName,
+        String authorProfilePictureUrl,
         String authorRoleInClub,
         String comment,
         LocalDateTime createdAt,

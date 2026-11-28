@@ -163,6 +163,17 @@ public class PostService {
     }
 
     @Transactional(readOnly = true)
+    public PostListItemResponse getPost(Integer postId) {
+        Post post = postRepository.findByPostIdAndIsDeletedFalse(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Пост не найден"));
+        Club club = post.getClub();
+        if (club == null || !club.isActive() || club.isBlocked()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Пост не найден");
+        }
+        return mapToPostResponses(List.of(post)).get(0);
+    }
+
+    @Transactional(readOnly = true)
     public Map<Integer, String> getCurrentUserRolesByClubIds(Collection<Integer> clubIds) {
         User currentUser = getCurrentUserOptional();
         if (currentUser == null || clubIds == null || clubIds.isEmpty()) {
@@ -203,8 +214,11 @@ public class PostService {
                         post.getUser().getUserId(),
                         post.getUser().getFirstName(),
                         post.getUser().getLastName(),
+                        post.getUser().getProfilePictureUrl(),
                         post.getClub().getClubId(),
                         post.getClub().getClub(),
+                        post.getClub().getPictureUrl(),
+                        post.getClub().getAbout(),
                         imageUrlByPostId.get(post.getPostId()),
                         pollByPostId.get(post.getPostId()),
                         commentsByPostId.getOrDefault(post.getPostId(), List.of())))
