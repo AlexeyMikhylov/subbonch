@@ -47,9 +47,11 @@
         • post.authorProfilePictureUrl — URL аватарки автора (может быть null/пустым)
         • post.clubId, post.clubName — ID и название клуба
         • post.clubPictureUrl — URL аватарки клуба (может быть null/пустым)
+        • post.clubAbout — описание клуба (может быть null/пустым), удобно для сайдбара на странице поста
         • post.imageUrl — URL изображения поста (может быть null/пустым)
         • post.poll — опрос (PollResponse, может быть null)
-        • post.comments — список комментариев (List<CommentResponse>)
+        • post.comments — дерево комментариев верхнего уровня (List<CommentResponse>); ответы лежат в `comment.replies`
+        • post.commentsCount — общее число комментариев поста, включая ответы любой глубины (рекурсивный подсчёт по дереву). Использовать его, а не `post.comments.size()`: `size()` считает только корневые комментарии
 
     **Модель comment в шаблонах (CommentResponse)**
         • comment.commentId — ID комментария
@@ -62,9 +64,37 @@
         • comment.parentId — ID родительского комментария (null для корневого)
         • comment.replies — список ответов (List<CommentResponse>)
 
-    **Модели опросов (Poll и Vote)**
-        • poll.pollId, poll.title, poll.isMultiple, poll.votes (список вариантов List<Vote>)
-        • vote.voteId, vote.vote (текст варианта ответа), vote.total (количество голосов)
+    **Модели опросов (PollResponse / PollOptionResponse)**
+        • poll.pollId — ID опроса
+        • poll.title — вопрос
+        • poll.isMultiple — множественный выбор
+        • poll.closesAt — дата закрытия (может быть null)
+        • poll.closed — закрыт ли опрос
+        • poll.alreadyVoted — голосовал ли текущий пользователь
+        • poll.options — варианты (List<PollOptionResponse>)
+        • option.voteId — ID варианта
+        • option.vote — текст варианта
+        • option.total — количество голосов
+        • option.selectedByCurrentUser — выбран ли вариант текущим пользователем
+
+    **Модель каталога клуба (ClubListItemResponse, элемент `clubsPage.content`)**
+        • item.clubId — ID клуба
+        • item.club — название
+        • item.about — описание (может быть null)
+        • item.pictureUrl — аватар/обложка (может быть null)
+        • item.membersCount — количество участников
+
+    **Модель страницы клуба (ClubPageResponse)**
+        • clubPage.clubId, clubPage.club, clubPage.about, clubPage.pictureUrl, clubPage.createdAt
+        • clubPage.membersCount — количество участников
+        • clubPage.userRoleInClub — роль текущего пользователя (`NONE`/`MEMBER`/`MODERATOR`/`ADMIN`)
+        • clubPage.team — команда клуба (List<ClubTeamMemberResponse>: `userId`, `firstName`, `lastName`, `userRole`)
+
+    **Модель профиля (ProfileResponse)**
+        • profile.userId, profile.firstName, profile.lastName, profile.email
+        • profile.about, profile.profilePictureUrl, profile.createdAt
+        • profile.clubsCount — число клубов пользователя
+        • profile.commentsCount — число комментариев пользователя (включая ответы, по данным БД)
 
     **Модель application (Applications)**
         • application.applicationId, application.clubName, application.appDescription, application.reason, application.appStatus ('PENDING', 'APPROVED', 'REJECTED')
@@ -78,38 +108,50 @@
     **loginError** — ошибка входа (показывается в layout).
     **blockReason** — причина блокировки пользователя при входе (показывается в layout).
     **popularClubs** — топ клубов по количеству участников (для правого блока на главной). # пока не делаем
-    **postsList** — список постов для вывода в ленте или на странице клуба.
+    **postsList** — список постов для вывода в ленте, на странице клуба или похожих блоках.
+    **post** — один пост для страницы поста (`PostListItemResponse`).
     **clubsPage** — страница каталога клубов (`PageResponse<ClubListItemResponse>`: `content`, `page`, `size`, `totalElements`, `totalPages`).
-    **clubPage** — данные страницы клуба (`ClubPageResponse`: клуб, `membersCount`, `userRoleInClub`, `team`).
+    **clubPage** — данные страницы клуба (`ClubPageResponse`).
     **membersPage** — страница участников клуба (`PageResponse<ClubMemberListItemResponse>`).
     **clubForm** — форма редактирования клуба (`ClubEditRequest`: `club`, `about`, `pictureUrl`).
-    **userRoleInClub** — роль текущего юзера в клубе ('NONE', 'MEMBER', 'MODERATOR', 'ADMIN'), в шаблоне берётся как `clubPage.userRoleInClub`.
+    **profile** — профиль пользователя (`ProfileResponse`).
+    **profileForm** — форма редактирования профиля (`ProfileEditRequest`).
+    **applications** — заявки на создание клубов (админ-панель).
+    **applicationForm**, **applicationSuccess**, **applicationError** — форма/флеш-сообщения заявки на создание клуба.
+    **successMessage / errorMessage** — стандартные flash-сообщения после действий.
+    **returnUrl** — опциональный безопасный локальный путь для возврата после действия (комментарий, голосование, вступление/выход).
 
 ### Карта url маршрутов
 
-    GET /login	                            login.html	                Страница входа (Spring Security ожидает поля username и password).
-    GET /register	                        register.html	            Страница регистрации.
-    POST /register	                        redirect:/login?registered	Обработка регистрации. Поля формы: firstName, lastName, email, password, passwordConfirm.
-    GET / или GET /feed	                    feed.html	                Главная страница с лентой. Поддерживает параметр ?tab=subscriptions для вкладки «Подписки».
-    GET /clubs	                            catalog.html	            Каталог клубов. Параметры: `q`, `page`, `size`.
-    GET /clubs/{id}	                        club.html	                Страница клуба: описание, команда, роль пользователя, кнопки вступления/выхода.
-    POST /clubs/{id}/join	                redirect:/clubs/{id}	    Вступить в клуб (только авторизованный). Успех/ошибка через flash `successMessage/errorMessage`.
-    POST /clubs/{id}/leave	                redirect:/clubs/{id}	    Покинуть клуб. `MODERATOR/ADMIN` не могут выйти до передачи прав (flash `errorMessage`).
-    GET /clubs/{id}/members	                club-members.html	        Участники клуба. Только `ADMIN` клуба или `isAppAdmin`. Параметры: `page`, `size`.
-    POST /clubs/{id}/members/{userId}/moderator/assign	redirect:/clubs/{id}/members	Назначить модератора (MEMBER -> MODERATOR).
-    POST /clubs/{id}/members/{userId}/moderator/remove	redirect:/clubs/{id}/members	Снять модератора (MODERATOR -> MEMBER).
-    GET /clubs/{id}/edit	                club-edit.html	            Форма редактирования клуба. Только `ADMIN` клуба или `isAppAdmin`.
-    POST /clubs/{id}/edit	                redirect:/clubs/{id}	    Сохранить клуб. Поля: `club`, `about`, `pictureUrl`. Ошибка валидации — возврат `club-edit.html` с `errorMessage`.
-    POST /clubs/{id}/posts/create	        redirect:/clubs/{id}	    Создание поста (только `MODERATOR/ADMIN` клуба). Поля: `title`, `body`, `imageUrl` (опционально).
-    POST /clubs/{id}/posts/{postId}/delete	redirect:/clubs/{id}	    Мягкое удаление поста (только `MODERATOR/ADMIN` клуба).
-    POST /posts/{id}/comments	            redirect:/clubs/{clubId}	Добавление комментария. Поля: comment, parentId (скрытое поле для ответа).
-    POST /comments/{commentId}/delete	    redirect:/clubs/{clubId}	Мягкое удаление комментария. Права: автор или MODERATOR/ADMIN клуба. Поле: `returnUrl` (опционально).
-    POST /polls/{pollId}/vote	            redirect:/feed	            Голосование в опросе. Поля: `voteId`, опционально `returnUrl` (безопасный локальный путь; иначе Referer/`/feed`).
-    
-    GET /profile	                        profile.html	            Профиль текущего пользователя.
-    GET /profile/edit	                    profile-edit.html	        Форма редактирования профиля.
-    POST /profile/edit	                    redirect:/profile	        Редактирование профиля. Поля: firstName, lastName, about, profilePictureUrl.
-    POST /applications/create	            redirect:/profile	        Отправка заявки на клуб. Поля: clubName, appDescription, reason.
-    
-    GET /admin	                            admin.html	                Панель глобального админа (список заявок applications со статусом PENDING).
-    POST /admin/applications/{id}/approve	redirect:/admin	            Одобрение заявки и автоматическое создание клуба.
+    GET /login                              login.html                  Страница входа (Spring Security ожидает поля username и password).
+    GET /register                           register.html               Страница регистрации.
+    POST /register                          redirect:/login?registered  Обработка регистрации. Поля формы: firstName, lastName, email, password, passwordConfirm.
+
+    GET / или GET /feed                     feed.html                   Главная страница с лентой. Поддерживает параметр ?tab=subscriptions для вкладки «Подписки».
+
+    GET /clubs                              catalog.html                Каталог клубов. Параметры: `q`, `page`, `size`.
+    GET /clubs/{id}                         club.html                   Страница клуба: описание, команда, роль пользователя, кнопки вступления/выхода.
+    POST /clubs/{id}/join                   redirect:<returnUrl|Referer|/clubs/{id}>  Вступить в клуб (только авторизованный). Опционально: `returnUrl` (безопасный локальный путь). Успех/ошибка через flash `successMessage/errorMessage`.
+    POST /clubs/{id}/leave                  redirect:<returnUrl|Referer|/clubs/{id}>  Покинуть клуб. Опционально: `returnUrl`. `MODERATOR/ADMIN` не могут выйти до передачи прав (flash `errorMessage`).
+    GET /clubs/{id}/members                 club-members.html           Участники клуба. Только `ADMIN` клуба или `isAppAdmin`. Параметры: `page`, `size`.
+    POST /clubs/{id}/members/{userId}/moderator/assign  redirect:/clubs/{id}/members  Назначить модератора (MEMBER -> MODERATOR).
+    POST /clubs/{id}/members/{userId}/moderator/remove  redirect:/clubs/{id}/members  Снять модератора (MODERATOR -> MEMBER).
+    GET /clubs/{id}/edit                    club-edit.html              Форма редактирования клуба. Только `ADMIN` клуба или `isAppAdmin`.
+    POST /clubs/{id}/edit                   redirect:/clubs/{id}        Сохранить клуб. Поля: `club`, `about`, `pictureUrl`. Ошибка валидации — возврат `club-edit.html` с `errorMessage`.
+
+    POST /clubs/{id}/posts/create           redirect:/clubs/{id}        Создание поста (только `MODERATOR/ADMIN` клуба). Поля: `title`, `body`, `imageUrl` (опционально).
+    POST /clubs/{id}/posts/{postId}/delete  redirect:/clubs/{id}        Мягкое удаление поста (только `MODERATOR/ADMIN` клуба).
+    GET /posts/{id}                         post.html                   Страница поста: пост, опрос, комментарии, сайдбар клуба.
+
+    POST /posts/{id}/comments               redirect:<returnUrl|/clubs/{clubId}>  Добавление комментария. Поля: `comment`, `parentId` (опционально, для ответа), `returnUrl` (опционально). При ошибке возврат на `returnUrl`/безопасный Referer/клуб/ленту.
+    POST /comments/{commentId}/delete       redirect:<returnUrl|...>    Мягкое удаление комментария. Права: автор, MODERATOR/ADMIN клуба или isAppAdmin. Поле: `returnUrl` (опционально).
+
+    POST /polls/{pollId}/vote               redirect:<returnUrl|Referer|/feed>  Голосование в опросе. Поля: `voteId`, опционально `returnUrl` (безопасный локальный путь).
+
+    GET /profile                            profile.html                Профиль текущего пользователя.
+    GET /profile/edit                       profile-edit.html           Форма редактирования профиля.
+    POST /profile/edit                      redirect:/profile           Редактирование профиля. Поля: firstName, lastName, about, profilePictureUrl.
+    POST /applications/create               redirect:/profile           Отправка заявки на клуб. Поля: clubName, appDescription, reason.
+
+    GET /admin                              admin.html                  Панель глобального админа (список заявок applications со статусом PENDING).
+    POST /admin/applications/{id}/approve   redirect:/admin             Одобрение заявки и автоматическое создание клуба.

@@ -335,6 +335,38 @@ class CommentServiceTest {
     }
 
     @Test
+    void getCommentTreesByPostIds_nestedReplies_keepsThreeLevelHierarchy() {
+        User author = user(1, "a@sut.ru");
+        Club club = activeClub(10);
+        Post post = activePost(100, club, author);
+
+        Comment root = comment(200, post, author, "Root", false);
+        Comment reply = comment(201, post, author, "Reply", false);
+        reply.setParent(root);
+        Comment nestedReply = comment(202, post, author, "Nested", false);
+        nestedReply.setParent(reply);
+
+        when(commentRepository.findByPostPostIdInAndIsDeletedFalseOrderByCreatedAtAsc(List.of(100)))
+                .thenReturn(List.of(root, reply, nestedReply));
+        when(clubMemberRepository.findByClubClubIdAndUserUserIdIn(10, Set.of(1)))
+                .thenReturn(List.of(member(author, club, ClubRole.MEMBER)));
+
+        Map<Integer, List<CommentResponse>> result = commentService.getCommentTreesByPostIds(List.of(100), 10);
+
+        assertThat(result.get(100)).hasSize(1);
+        CommentResponse rootResp = result.get(100).get(0);
+        CommentResponse replyResp = rootResp.replies().get(0);
+        CommentResponse nestedResp = replyResp.replies().get(0);
+
+        assertThat(rootResp.commentId()).isEqualTo(200);
+        assertThat(replyResp.commentId()).isEqualTo(201);
+        assertThat(replyResp.parentId()).isEqualTo(200);
+        assertThat(nestedResp.commentId()).isEqualTo(202);
+        assertThat(nestedResp.parentId()).isEqualTo(201);
+        assertThat(nestedResp.replies()).isEmpty();
+    }
+
+    @Test
     void getCommentTreesByPostIds_deletedParentFilteredByRepo_childBecomesRoot() {
         User author = user(1, "a@sut.ru");
         Club club = activeClub(10);

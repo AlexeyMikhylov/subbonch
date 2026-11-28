@@ -218,6 +218,7 @@ public class PostService {
                         post.getClub().getClubId(),
                         post.getClub().getClub(),
                         post.getClub().getPictureUrl(),
+                        post.getClub().getAbout(),
                         imageUrlByPostId.get(post.getPostId()),
                         pollByPostId.get(post.getPostId()),
                         commentsByPostId.getOrDefault(post.getPostId(), List.of())))

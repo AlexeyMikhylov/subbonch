@@ -5,16 +5,14 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.net.URI;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.ui.ExtendedModelMap;
+import org.springframework.ui.Model;
 import ru.sut.subbonch.controller.AuthController;
 import ru.sut.subbonch.dto.RegisterRequest;
 import ru.sut.subbonch.entity.User;
@@ -34,33 +32,40 @@ class AuthControllerTest {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("user@sut.ru");
         when(authService.register(request)).thenReturn(new User());
+        Model model = new ExtendedModelMap();
 
-        ResponseEntity<?> response = authController.register(request);
+        String view = authController.register(request, model);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FOUND);
-        assertThat(response.getHeaders().getLocation()).isEqualTo(URI.create("/login?registered"));
+        assertThat(view).isEqualTo("redirect:/login?registered");
         verify(authService).register(request);
     }
 
     @Test
-    void register_validationError_returnsBadRequest() {
+    void register_validationError_showsRegisterFormWithMessage() {
         RegisterRequest request = new RegisterRequest();
-        doThrow(new IllegalArgumentException("Email уже занят")).when(authService).register(request);
+        request.setEmail("user@sut.ru");
+        request.setFirstName("Иван");
+        doThrow(new IllegalArgumentException("Пароли не совпадают")).when(authService).register(request);
+        Model model = new ExtendedModelMap();
 
-        ResponseEntity<?> response = authController.register(request);
+        String view = authController.register(request, model);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isEqualTo(Map.of("error", "Email уже занят"));
+        assertThat(view).isEqualTo("register");
+        assertThat(model.getAttribute("errorMessage")).isEqualTo("Пароли не совпадают");
+        assertThat(model.getAttribute("email")).isEqualTo("user@sut.ru");
+        assertThat(model.getAttribute("firstName")).isEqualTo("Иван");
     }
 
     @Test
-    void register_duplicateEmailRace_returnsBadRequest() {
+    void register_duplicateEmailRace_showsRegisterFormWithMessage() {
         RegisterRequest request = new RegisterRequest();
+        request.setEmail("user@sut.ru");
         doThrow(new DataIntegrityViolationException("duplicate")).when(authService).register(request);
+        Model model = new ExtendedModelMap();
 
-        ResponseEntity<?> response = authController.register(request);
+        String view = authController.register(request, model);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isEqualTo(Map.of("error", "Email уже занят"));
+        assertThat(view).isEqualTo("register");
+        assertThat(model.getAttribute("errorMessage")).isEqualTo("Email уже занят");
     }
 }
